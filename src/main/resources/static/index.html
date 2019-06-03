@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Cerberus Robot</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="webjars/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+        <link href="webjars/google-code-prettify/1.0.5/bin/prettify.min.css" rel="stylesheet">
+        <script src="webjars/jquery/3.1.0/jquery.min.js"></script>
+        <script src="webjars/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <script src="webjars/google-code-prettify/1.0.5/bin/prettify.min.js"></script>
+        <script src="webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+        <script src="webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
+        <script src="js/cerberus-robot.js"></script>
+    </head>
+    <body>
+        <div class="sidebar-nav navbar" style="background-color: #333;color:white">
+        <h2><img id="logo" alt="Cerberus" style="width:50px; weight:50px" src="img/Logo-cerberus_menu.png"/> Cerberus Robot</h2>
+        </div>
+        <h4 class="page-title-line" id="title">Cerberus Robot is up and Running...</h4>
+            <div class="panel panel-default">
+                <div class="panel-heading" id="labelListLabel">
+                    <span class="glyphicon glyphicon-list"></span>
+                    List of services available
+                </div>
+                <div class="panel-body" id="labelList">
+                    <ul id="tabsScriptEdit" class="nav nav-tabs" data-tabs="tabs">
+                        <li class="active"><a data-toggle="tab" href="#tabProxy" id="editTabProxy" name="tabProxy">Proxy</a></li>
+                        <li><a data-toggle="tab" href="#tabPerformances" id="editTabPerformances" name="tabPerformances">Performances</a></li>
+                        <li><a data-toggle="tab" href="#tabSelenium" id="editTabSelenium" name="tabSelenium">Selenium</a></li>
+                        <li><a data-toggle="tab" href="#tabSikuli" id="editTabSikuli" name="tabSikuli">Sikuli</a></li>
+                        <li><a data-toggle="tab" href="#tabCommand" id="editTabCommand" name="tabCommand">Command</a></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="center marginTop25 tab-pane fade in active" id="tabProxy">
+                            <button onclick="loadProxyList()">getProxies</button>
+                            <pre id="proxy"></pre>
+                        </div>
+                        <div class="center marginTop25 tab-pane fade in" id="tabPerformances">
+                            <button onclick="loadPerformance()">getPerformances</button>
+                            <table id="labelsTable" class="table table-bordered table-hover display" name="labelsTable"></table>
+                            <pre class="prettyprint" style="min-height:200px; height:400px; overflow: auto"><code id="performance" class="lang-js"></code></pre>
+                        </div>
+                        <div class="center marginTop25 tab-pane fade in" id="tabSelenium">
+                            <button onclick="startSelenium()">Start Selenium Server</button>
+                            <pre id="seleniumLog"></pre>
+                        </div>
+                        <div class="center marginTop25 tab-pane fade in" id="tabSikuli">
+                            <button onclick="startSikuli()">Start Sikuli Server</button>
+                            <pre id="sikuliLog"></pre>
+                        </div>
+                        <div class="center marginTop25 tab-pane fade in" id="tabCommand">
+                            <input id="commandInput">
+                            <button onclick="executeCommand()">Execute Command</button>
+                            <pre id="commandLog"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+        <p>Performances : <a href="/getSystemInfo">System Info</a></p>
+        <p>Proxy : <a href="/createSession">Create Session</a> , 
+        <a href="/getHar">Get HAR</a> , 
+        <a href="/getProxyList">Get Proxy List</a> , 
+        <a href="/stopSession">Stop Session</a></p>
+    </body>
+</html>
