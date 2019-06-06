@@ -1,0 +1,65 @@
+# Cerberus Copyright (C) 2016 Cerberus Testing
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This file is part of Cerberus.
+#
+# Cerberus is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Cerberus is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Cerberus. If not, see <http://www.gnu.org/licenses/>.
+# Cerberus Glassfish MySQL composition.
+
+# Run a Cerberus instance with a Glassfish application server and a MySQL database.
+# Run also a Selenium hub with two nodes with respectively the Mozilla Firefox and Google Chrome Web browsers.
+#
+# How to run:
+#   - $ docker-compose up -f default-with-selenium.yml
+# Exposed ports:
+#   - 14444: The Selenium hub port
+#   - 15900: The Mozilla Firefox Selenium node VNC port
+#   - 15901: The Google Chrome Selenium node VNC port
+#   - 18092: The Cerberus Executor port
+
+version: '2'
+services:
+  cerberus-executor:
+    image: bcivel/cerberus-executor:latest
+    expose:
+      - "8092"
+    ports:
+      - "8092:8092"
+    restart: always
+# Selenium-related services
+  selenium-hub:
+    image: selenium/hub:latest
+    expose:
+      - "4444"
+    ports:
+      - "14444:4444"
+    restart: always
+  selenium-node-firefox:
+    image: selenium/node-firefox-debug:latest
+    environment:
+      HUB_HOST: selenium-hub
+    expose:
+      - "5900"
+    ports:
+      - "15900:5900"
+    restart: always
+  selenium-node-chrome:
+    image: selenium/node-chrome-debug:latest
+    environment:
+      HUB_HOST: selenium-hub
+    expose:
+      - "5900"
+    ports:
+      - "15901:5900"
+    restart: always

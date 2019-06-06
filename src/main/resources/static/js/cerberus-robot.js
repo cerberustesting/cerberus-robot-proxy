@@ -3,6 +3,11 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
+$(document).ready(function () {
+        loadProxyList();
+    });
+
+
 function loadPerformance() {
     $.ajax({url: "getSystemInfo",
         async: false,
@@ -21,12 +26,87 @@ function loadProxyList() {
         async: false,
         dataType: 'json',
         success: function (data) {
-            console.log(data);
-            $("#proxy").text(JSON.stringify(data, null, '\t'));
+            for (var i in data)
+            {
+                generateLogDiv(data[i]);
+            }
+        }
+    });
+}
+
+function generateLogDiv(data) {
+
+    $("#myProxy").append('<div class="col-md-6" id="container_'+data.uuid+'"><div class="card-header"><h6 class="my-0 font-weight-normal">Proxy '
+    +data.uuid+' on port '+data.port+'<ion-icon class="float-right" name="cloud-download" onclick="getHar(\'' + data.uuid + '\')"></ion-icon>\n\
+    <ion-icon class="float-right" name="square" onclick="stopProxy(\'' + data.uuid + '\')"></ion-icon>\n\
+    <div id="loader_'+data.uuid+'"></div></h6></div><div><pre id="' + data.uuid + '"></pre></div></div>');
+    $("#" + data.uuid).attr("class", "prettyprint");
+    $("#" + data.uuid).attr("style", "max-height:300px");
+    $("#" + data.uuid).append("\n");
+    $("#" + data.uuid).append(new Date($.now()));
+    $("#" + data.uuid).append("   *** Proxy ");
+    $("#" + data.uuid).append(data.uuid);
+    $("#" + data.uuid).append(" started ***   ");
+    $("#" + data.uuid).removeClass('prettyprinted');
+    PR.prettyPrint();
+}
+
+
+
+function startProxy() {
+    $.ajax({url: "startProxy",
+        async: false,
+        dataType: 'json',
+        success: function (data) {
+            generateLogDiv(data);
+        }
+    });
+}
+
+function getHar(uuid) {
+    $.ajax({url: "getHar?uuid=" + uuid,
+        async: false,
+        dataType: 'json',
+        success: function (data) {
+            $("#" + uuid).append("\n");
+            $("#" + uuid).append(new Date($.now()));
+            $("#" + uuid).append("   *** Get Har for Proxy ");
+            $("#" + uuid).append(uuid);
+            $("#" + uuid).append(" ***");
+            $("#" + uuid).append("\n");
+            $("#" + uuid).append(JSON.stringify(data, null, '\t'));
+            $("#" + uuid).append("\n");
+            $("#" + uuid).removeClass('prettyprinted');
             PR.prettyPrint();
         }
     });
 }
+
+
+function stopProxy(uuid) {
+    showLoader(uuid);
+    $.ajax({url: "stopProxy?uuid=" + uuid,
+        async: false,
+        dataType: 'json',
+        success: function (data) {
+            console.log("success");
+            $("#container_" + uuid).remove();
+        }
+    });
+}
+
+function showLoader(uuid) {
+    $("#loader_" + uuid).append('<div class="loader" id="loader"></div>');
+}
+
+/**
+ * Method that hides a loader that was specified in a modal dialog
+ * @param {type} element
+ */
+function hideLoader(uuid) {
+    $("#loader_" + uuid).empty;
+}
+
 
 function startSelenium() {
 //    $.ajax({url: "startSelenium",

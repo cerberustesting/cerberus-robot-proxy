@@ -37,8 +37,20 @@ public class MyProxyController {
     MyProxyService myProxyService;
 
     /**
+     * Check server is Up
+     * @param port
+     * @return
+     */
+    @RequestMapping("/check")
+    public String check() {
+        return "{\"message\":\"OK\"}";
+    }
+
+    /**
      * Start Proxy
-     * @param port Port to use for the proxy. Default value is 0, meaning port will be randomly determined 
+     *
+     * @param port Port to use for the proxy. Default value is 0, meaning port
+     * will be randomly determined
      * @return String in Json format containing port and uuid
      */
     @RequestMapping("/startProxy")
@@ -56,21 +68,22 @@ public class MyProxyController {
 
         myProxy.addProxy(uuid.toString(), proxy);
 
-        response = "{\"port\":" + port + ",\"proxy_uuid\" : \"" + uuid + "\"}";
+        response = "{\"port\":" + port + ",\"uuid\" : \"" + uuid + "\"}";
 
         return response;
     }
 
     /**
      * Get Har
+     *
      * @param uuid
      * @param requestUrl
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
     @RequestMapping("/getHar")
     public String getHar(@RequestParam(value = "uuid", defaultValue = "") String uuid,
-                         @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl) throws IOException {
+            @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl) throws IOException {
 
         String response = "";
         LOG.info("Get Har for Proxy : '" + uuid + "'");
@@ -79,7 +92,7 @@ public class MyProxyController {
 
         LOG.info("Har for proxy '" + uuid + "' generated");
 
-        try (StringWriter stringwriter = new StringWriter()) {
+        try ( StringWriter stringwriter = new StringWriter()) {
             har.writeTo(stringwriter);
             response = stringwriter.toString();
         } catch (Exception ex) {
@@ -91,13 +104,13 @@ public class MyProxyController {
 
     @RequestMapping("/getHarMD5")
     public String getHarMD5(@RequestParam(value = "uuid", defaultValue = "") String uuid,
-                            @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl) throws IOException {
+            @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl) throws IOException {
 
         String response;
         LOG.info("Get Har MD5 for Proxy '" + uuid + "'");
 
-        response = myProxyService.getHarMD5(uuid,requestUrl);
-        
+        response = myProxyService.getHarMD5(uuid, requestUrl);
+
         LOG.info("Har MD5 for proxy '" + uuid + "' : " + response);
 
         return response;
@@ -139,8 +152,8 @@ public class MyProxyController {
         return ja.toString();
     }
 
-    @RequestMapping("/stopSession")
-    public String stopSession(@RequestParam(value = "uuid", defaultValue = "") String uuid) {
+    @RequestMapping("/stopProxy")
+    public String stopProxy(@RequestParam(value = "uuid", defaultValue = "") String uuid) {
 
         String response = "";
         LOG.info("Stop Proxy : '" + uuid + "'");
@@ -148,7 +161,7 @@ public class MyProxyController {
         proxy.stop();
         myProxy.removeProxy(uuid);
 
-        response += "removed : " + uuid;
+        response = "{\"message\":\"Proxy successfully stopped\",\"uuid\" : \"" + uuid + "\"}";
 
         return response;
     }
