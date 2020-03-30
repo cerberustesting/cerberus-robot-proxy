@@ -64,7 +64,7 @@ function startProxy() {
 }
 
 function getHar(uuid) {
-    $.ajax({url: "getHar?uuid=" + uuid,
+    $.ajax({url: "getHar?uuid=" + uuid + "&emptyResponseContentText=true",
         async: false,
         dataType: 'json',
         success: function (data) {

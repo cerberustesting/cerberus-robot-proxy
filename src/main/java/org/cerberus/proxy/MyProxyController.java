@@ -1,14 +1,9 @@
 package org.cerberus.proxy;
 
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.StringWriter;
-import java.io.Writer;
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -54,21 +49,31 @@ public class MyProxyController {
      * @return String in Json format containing port and uuid
      */
     @RequestMapping("/startProxy")
-    public String startProxy(@RequestParam(value = "port", defaultValue = "0") int port) {
+    public String startProxy(@RequestParam(value = "port", defaultValue = "0") int port,
+                             @RequestParam(value = "timeout", defaultValue = "${proxy.defaulttimeout}") int timeout) {
 
         String response;
         UUID uuid = UUID.randomUUID();
-
+        
+        //Start proxy on specific port (or random)
         LOG.info("Start Proxy '" + uuid + "'");
-
         BrowserMobProxy proxy = myProxyService.startProxy(port);
 
+        //Calculate the max date for the proxy to be alive
+        Date now = new Date();
+        Calendar c = Calendar.getInstance();
+        c.setTime(now);
+        c.add(Calendar.MILLISECOND, timeout);
+        Date maxDateUp = c.getTime();
+        
+        //Get port 
         port = proxy.getPort();
-        LOG.info("Proxy '" + uuid + "' started on port :" + port);
+        LOG.info("Proxy '" + uuid + "' started on port :" + port + " until :" + maxDateUp);
+        
+        //Add Started proxy to the list
+        myProxy.addProxy(uuid.toString(), proxy, maxDateUp);
 
-        myProxy.addProxy(uuid.toString(), proxy);
-
-        response = "{\"port\":" + port + ",\"uuid\" : \"" + uuid + "\"}";
+        response = "{\"port\":" + port + ",\"uuid\" : \"" + uuid + "\",\"maxDateUp\" : \"" + maxDateUp + "\"}";
 
         return response;
     }
@@ -82,13 +87,15 @@ public class MyProxyController {
      * @throws IOException
      */
     @RequestMapping("/getHar")
-    public String getHar(@RequestParam(value = "uuid", defaultValue = "") String uuid,
-            @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl) throws IOException {
+    public String getHar(
+            @RequestParam(value = "uuid", defaultValue = "") String uuid,
+            @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl,
+            @RequestParam(value = "emptyResponseContentText", required = false, defaultValue = "false") boolean emptyResponseContentText) throws IOException {
 
         String response = "";
         LOG.info("Get Har for Proxy : '" + uuid + "'");
 
-        Har har = myProxyService.getHar(uuid, requestUrl);
+        Har har = myProxyService.getHar(uuid, requestUrl, emptyResponseContentText);
 
         LOG.info("Har for proxy '" + uuid + "' generated");
 
@@ -157,10 +164,8 @@ public class MyProxyController {
 
         String response = "";
         LOG.info("Stop Proxy : '" + uuid + "'");
-        BrowserMobProxy proxy = myProxy.getProxy(uuid);
-        proxy.stop();
-        myProxy.removeProxy(uuid);
-
+        myProxyService.stopProxy(uuid);
+        
         response = "{\"message\":\"Proxy successfully stopped\",\"uuid\" : \"" + uuid + "\"}";
 
         return response;
