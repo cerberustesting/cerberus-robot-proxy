@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import net.lightbody.bmp.BrowserMobProxy;
 import net.lightbody.bmp.BrowserMobProxyServer;
 import net.lightbody.bmp.core.har.Har;
@@ -20,6 +21,8 @@ import net.lightbody.bmp.core.har.HarLog;
 import net.lightbody.bmp.proxy.CaptureType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -174,6 +177,24 @@ public class MyProxyService {
         BrowserMobProxy proxy = myProxy.getProxy(uuid);
         proxy.stop();
         myProxy.removeProxy(uuid);
+    }
+    
+    /**
+     * Stop Specific proxy
+     * @param uuid 
+     */
+    public JSONObject getStats(String uuid) {
+        JSONObject response = new JSONObject();
+        
+        try {
+            
+            BrowserMobProxy proxy = myProxy.getProxy(uuid);
+            response.put("hits", proxy.getHar().getLog().getEntries().size());
+            
+        } catch (JSONException ex) {
+            LOG.warn(ex);
+        }
+        return response;
     }
 
     /**

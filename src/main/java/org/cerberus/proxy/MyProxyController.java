@@ -170,4 +170,15 @@ public class MyProxyController {
 
         return response;
     }
+    
+    @RequestMapping("/getStats")
+    public String getStats(@RequestParam(value = "uuid", defaultValue = "") String uuid) throws IOException {
+
+        String response = "";
+
+        JSONObject hits = myProxyService.getStats(uuid);
+        response = hits.toString();
+
+        return response;
+    }
 }
