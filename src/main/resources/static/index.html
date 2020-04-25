@@ -37,7 +37,7 @@ and open the template in the editor.
                         <a class="nav-link active" id="proxy-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true" href="#tabProxy">Proxy</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="performance-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabPerformances">Performances</a>
+                        <a class="nav-link" id="performance-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabPerformances">Speed Index</a>
                     </li>
                     <li>
                         <a class="nav-link" id="sikuli-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabSikuli">Sikuli</a>
@@ -53,9 +53,8 @@ and open the template in the editor.
                     <div class="row" id="myProxy"></div>
                 </div>
                 <div class="tab-pane fade" role="tabpanel" aria-labelledby="performance-tab" id="tabPerformances">
-                    <button onclick="loadPerformance()">getPerformances</button>
-                    <table id="labelsTable" class="table table-bordered table-hover display"></table>
-                    <pre class="prettyprint" style="min-height:200px; height:400px; overflow: auto"><code id="performance" class="lang-js"></code></pre>
+                    <input id="speedIndexUrl" placeholder="URL"><button onclick="getSpeedIndex()">Get Speed Index</button>
+                    <pre class="prettyprint" style="min-height:200px; height:400px; overflow: auto"><code id="speedIndexResult" class="lang-js"></code></pre>
                 </div>
                 <div class="tab-pane fade" role="tabpanel" aria-labelledby="sikuli-tab" id="tabSikuli">
                         <button onclick="startSikuli()">Start Sikuli Server</button>

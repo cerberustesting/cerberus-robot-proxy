@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan (basePackages = {"org.cerberus.application",
                                 "org.cerberus.sikuli",
+                                "org.cerberus.screenrecorder",
                                 "org.cerberus.proxy"})
 @EnableScheduling
 @PropertySource("classpath:application.properties")

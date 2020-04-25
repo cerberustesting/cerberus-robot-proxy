@@ -8,13 +8,14 @@ $(document).ready(function () {
     });
 
 
-function loadPerformance() {
-    $.ajax({url: "getSystemInfo",
+function getSpeedIndex() {
+    var url = $("#speedIndexUrl").val();
+    $.ajax({url: "launch?url="+url,
         async: false,
         dataType: 'json',
         success: function (data) {
-            console.log(data);
-            $("#performance").text(JSON.stringify(data, null, '\t'));
+            //console.log(data);
+            $("#speedIndexResult").text(JSON.stringify(data, null, '\t'));
             PR.prettyPrint();
         }
     });
