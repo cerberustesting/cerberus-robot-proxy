@@ -20,7 +20,7 @@ RUN apt-get install -yq xvfb
 # Download Cerberus Executor Application
 #ADD cerberus-executor-1.1.0.jar cerberus-executor-1.1.0.jar
 RUN echo "Download Cerberus Executor Application" && \
-    wget https://github.com/cerberustesting/cerberus-executor/releases/download/cerberus-executor-1.0.0/cerberus-executor-1.0.0.jar
+    wget https://github.com/cerberustesting/cerberus-executor/releases/download/cerberus-executor-1.1.0/cerberus-executor-1.1.0.jar
 
 # Launch Cerberus Executor with xvfb
 ADD launch.sh /var/launch.sh
