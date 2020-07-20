@@ -6,7 +6,7 @@ and open the template in the editor.
 -->
 <html>
     <head>
-        <title>Cerberus Robot</title>
+        <title>Cerberus Executor</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="webjars/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
@@ -16,16 +16,25 @@ and open the template in the editor.
         <script src="webjars/google-code-prettify/1.0.5/bin/prettify.min.js"></script>
         <script src="webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
         <script src="webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
-        <script src="js/cerberus-robot.js"></script>
+        <script src="js/cerberus-executor.js"></script>
+        <script src="js/cerberus-executor-proxy.js"></script>
+        <script src="js/cerberus-executor-screenrecorder.js"></script>
+        <script src="js/websocket.js"></script>
+        <script src="js/sockjs-0.3.4.js"></script>
+        <script src="js/stomp.js"></script>
         <link href="css/sunburst.css" rel="stylesheet">
         <link href="css/loader.css" rel="stylesheet">
-        <script src="https://unpkg.com/ionicons@4.5.5/dist/ionicons.js"></script>
+        <link rel="icon" type="image/png" href="img/favicon.ico.png">
+        <script src="https://unpkg.com/ionicons@5.1.2/dist/ionicons.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script> 
+      
     </head>
     <body>
         <div class="sidebar-nav navbar" style="background-color: #333;color:white">
-            <h2><img id="logo" alt="Cerberus" style="width:50px; weight:50px" src="img/Logo-cerberus_menu.png"/> Cerberus Robot</h2>
+            <h2><img id="logo" alt="Cerberus" style="width:50px; weight:50px" src="img/Logo-cerberus_menu.png"/> Cerberus Executor</h2>
         </div>
-        <h5 class="page-title-line" id="title">Cerberus Robot is up and Running...</h5>
+        <h5 class="page-title-line" id="title">Cerberus Executor is up and Running...</h5>
         <div class="card">
             <div class="card-title">
                 <ion-icon name="apps"></ion-icon>
@@ -36,15 +45,18 @@ and open the template in the editor.
                     <li class="nav-item">
                         <a class="nav-link active" id="proxy-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true" href="#tabProxy">Proxy</a>
                     </li>
-                    <li class="nav-item">
+                    <li>
+                        <a class="nav-link" id="video-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabVideo">Screen Recorder</a>
+                    </li>
+<!--                    <li class="nav-item">
                         <a class="nav-link" id="performance-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabPerformances">Speed Index</a>
-                    </li>
+                    </li>-->
                     <li>
-                        <a class="nav-link" id="sikuli-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabSikuli">Sikuli</a>
+                        <a class="nav-link" id="documentation-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabDocumentation">Documentation</a>
                     </li>
-                    <li>
-                        <a class="nav-link" id="command-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabCommand">Command</a>
-                    </li>
+                    <!--                    <li>
+                                            <a class="nav-link" id="command-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabCommand">Command</a>
+                                        </li>-->
                 </ul>
             </div>
             <div class="card-body tab-content" id="myTabContent">
@@ -52,13 +64,64 @@ and open the template in the editor.
                     <p> <button class="btn btn-primary" onclick="startProxy()"><ion-icon name="play"></ion-icon> Start Proxy on random port</button></p>
                     <div class="row" id="myProxy"></div>
                 </div>
+                <div class="tab-pane fade" role="tabpanel" aria-labelledby="video-tab" id="tabVideo">
+                    <div id="responsePicture" class="row"></div>
+                    <h5 class="page-title-line">Last Sessions :</h5>
+                    <div class="row">
+                        <div class="col-lg-6 overflow-auto" style="height:480px">
+                            <ul id="conversationDiv"></ul>
+                        </div>
+                        <div class="col-lg-6" id="lastSessionVideo"></div>
+                    </div>
+                    <br><br>
+                    <h5 class="page-title-line">VNC Manual Connection :</h5>
+                    <form onsubmit="startRecording()" role="form">
+                        <div class="form-row">
+                            <div class="col-md-2 mb-3">
+                                <label for="vncHost">VNC Host</label>
+                                <input type="text" class="form-control" id="vncHost" name="vncHost" required>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="vncPort">VNC Port</label>
+                                <input type="text" class="form-control" id="vncPort" name="vncPort" required>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="vncPassword">VNC Password</label>
+                                <input type="text" class="form-control" id="vncPassword" name="vncPassword" required>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <button class="btn btn-primary" type="submit"><ion-icon name="play"></ion-icon> Start Recorder</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
                 <div class="tab-pane fade" role="tabpanel" aria-labelledby="performance-tab" id="tabPerformances">
                     <input id="speedIndexUrl" placeholder="URL"><button onclick="getSpeedIndex()">Get Speed Index</button>
                     <pre class="prettyprint" style="min-height:200px; height:400px; overflow: auto"><code id="speedIndexResult" class="lang-js"></code></pre>
                 </div>
-                <div class="tab-pane fade" role="tabpanel" aria-labelledby="sikuli-tab" id="tabSikuli">
-                        <button onclick="startSikuli()">Start Sikuli Server</button>
-                        <pre id="sikuliLog"></pre>
+                <div class="tab-pane fade" role="tabpanel" aria-labelledby="documentation-tab" id="tabDocumentation">
+                    <h5 class="page-title-line">API Documentation :</h5>
+                    <a href="./swagger-ui.html">Swagger</a>
+                    <br><hr/><br>
+                    <h5 class="page-title-line">Proxy :</h5>
+                    <div class="row"><ul id="my-proxy-controller" class="col-lg-6 list-group"></ul>
+                        <div class="col-lg-6">
+                            <figure class="figure">
+                                <img id="workflowProxy" src="img/workflowProxy.png" class="figure-img img-fluid rounded" width="640" height="480" >
+                                <figcaption class="figure-caption">Proxy Sequence Diagram</figcaption>
+                            </figure>
+                        </div>
+                    </div>
+                    <br><hr/><br>
+                    <h5 class="page-title-line">Screen Recorder :</h5>
+                    <div class="row"><ul id="my-screen-recorder-controller" class="col-lg-6 list-group"></ul>
+                        <div class="col-lg-6">
+                        <figure class="figure">
+                            <img id="workflowProxy" src="img/workflowScreenrecorder.png" class="figure-img img-fluid rounded" width="640" height="480" >
+                            <figcaption class="figure-caption">ScreenRecorder Sequence Diagram</figcaption>
+                        </figure>
+                        </div>
+                    </div>
                 </div>
                 <div class="tab-pane fade" role="tabpanel" aria-labelledby="command-tab"  id="tabCommand">
                     <input id="commandInput">

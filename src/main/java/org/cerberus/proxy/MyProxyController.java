@@ -1,5 +1,8 @@
 package org.cerberus.proxy;
 
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Calendar;
@@ -20,6 +23,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 @RestController
 public class MyProxyController {
@@ -33,10 +37,16 @@ public class MyProxyController {
 
     /**
      * Check server is Up
+     *
      * @param port
      * @return
      */
-    @RequestMapping("/check")
+    @ApiOperation(value = "Check if cerberus-executor is up")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "cerberus-executor is up")
+    }
+    )
+    @RequestMapping(value = "/check", method = RequestMethod.GET)
     public String check() {
         return "{\"message\":\"OK\"}";
     }
@@ -48,13 +58,18 @@ public class MyProxyController {
      * will be randomly determined
      * @return String in Json format containing port and uuid
      */
-    @RequestMapping("/startProxy")
+    @ApiOperation(value = "Start a proxy on specific port, or on random port if port information is not provided")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "proxy has been created, the port is provided")
+    }
+    )
+    @RequestMapping(value = "/startProxy", method = RequestMethod.GET)
     public String startProxy(@RequestParam(value = "port", defaultValue = "0") int port,
-                             @RequestParam(value = "timeout", defaultValue = "${proxy.defaulttimeout}") int timeout) {
+            @RequestParam(value = "timeout", defaultValue = "${proxy.defaulttimeout}") int timeout) {
 
         String response;
         UUID uuid = UUID.randomUUID();
-        
+
         //Start proxy on specific port (or random)
         LOG.info("Start Proxy '" + uuid + "'");
         BrowserMobProxy proxy = myProxyService.startProxy(port);
@@ -65,11 +80,11 @@ public class MyProxyController {
         c.setTime(now);
         c.add(Calendar.MILLISECOND, timeout);
         Date maxDateUp = c.getTime();
-        
+
         //Get port 
         port = proxy.getPort();
         LOG.info("Proxy '" + uuid + "' started on port :" + port + " until :" + maxDateUp);
-        
+
         //Add Started proxy to the list
         myProxy.addProxy(uuid.toString(), proxy, maxDateUp);
 
@@ -86,7 +101,8 @@ public class MyProxyController {
      * @return
      * @throws IOException
      */
-    @RequestMapping("/getHar")
+    @ApiOperation(value = "Get HAR file knowing a specific proxy uuid")
+    @RequestMapping(value = "/getHar", method = RequestMethod.GET)
     public String getHar(
             @RequestParam(value = "uuid", defaultValue = "") String uuid,
             @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl,
@@ -109,7 +125,7 @@ public class MyProxyController {
         return response;
     }
 
-    @RequestMapping("/getHarMD5")
+    @RequestMapping(value = "/getHarMD5", method = RequestMethod.GET)
     public String getHarMD5(@RequestParam(value = "uuid", defaultValue = "") String uuid,
             @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl) throws IOException {
 
@@ -123,7 +139,7 @@ public class MyProxyController {
         return response;
     }
 
-    @RequestMapping("/clearHar")
+    @RequestMapping(value = "/clearHar", method = RequestMethod.GET)
     public String clearHar(@RequestParam(value = "uuid", defaultValue = "") String uuid) throws IOException {
 
         String response = "";
@@ -136,7 +152,7 @@ public class MyProxyController {
         return response;
     }
 
-    @RequestMapping("/getProxyList")
+    @RequestMapping(value = "/getProxyList", method = RequestMethod.GET)
     public String getProxyList(HttpServletRequest request) {
 
         String response = "";
@@ -159,19 +175,19 @@ public class MyProxyController {
         return ja.toString();
     }
 
-    @RequestMapping("/stopProxy")
+    @RequestMapping(value = "/stopProxy", method = RequestMethod.GET)
     public String stopProxy(@RequestParam(value = "uuid", defaultValue = "") String uuid) {
 
         String response = "";
         LOG.info("Stop Proxy : '" + uuid + "'");
         myProxyService.stopProxy(uuid);
-        
+
         response = "{\"message\":\"Proxy successfully stopped\",\"uuid\" : \"" + uuid + "\"}";
 
         return response;
     }
-    
-    @RequestMapping("/getStats")
+
+    @RequestMapping(value = "/getStats", method = RequestMethod.GET)
     public String getStats(@RequestParam(value = "uuid", defaultValue = "") String uuid) throws IOException {
 
         String response = "";

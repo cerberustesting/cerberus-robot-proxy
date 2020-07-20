@@ -29,22 +29,26 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-logging</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-log4j2</artifactId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-web</artifactId>
             <version>2.11.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-websocket</artifactId>
+            <version>5.2.2.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-messaging</artifactId>
+            <version>5.2.2.RELEASE</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
@@ -64,16 +68,6 @@
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>webjars-locator-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
-            <artifactId>sockjs-client</artifactId>
-            <version>1.0.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
-            <artifactId>stomp-websocket</artifactId>
-            <version>2.3.3</version>
         </dependency>
         <dependency>
             <groupId>org.webjars.bower</groupId>
@@ -130,29 +124,59 @@
             <version>5.3.1</version>
         </dependency>
         <dependency>
-            <groupId>com.sikulix</groupId>
-            <artifactId>sikulixapi</artifactId>
-            <version>1.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-            <version>3.14.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-api</artifactId>
-            <version>3.14.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.stephenc.monte</groupId>
-            <artifactId>monte-screen-recorder</artifactId>
-            <version>0.7.7.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>javacv-platform</artifactId>
             <version>1.5.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>artoolkitplus</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>leptonica</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>flandmark</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>flycapture</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>tesseract</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>opencv</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>libfreenect</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>libfreenect2</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>librealsense</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>librealsense2</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>openblas</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bytedeco</groupId>
+                    <artifactId>libdc1394</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -160,9 +184,24 @@
             <version>23.0</version>
         </dependency>
         <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-chrome-driver</artifactId>
-            <version>3.14.0</version>
+            <groupId>com.shinyhut</groupId>
+            <artifactId>vernacular</artifactId>
+            <version>1.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jcodec</groupId>
+            <artifactId>jcodec</artifactId>
+            <version>0.2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger2</artifactId>
+            <version>2.9.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger-ui</artifactId>
+            <version>2.9.2</version>
         </dependency>
         
         <!-- Thanks for using https://jar-download.com -->
@@ -196,7 +235,6 @@
             </plugin>
         </plugins>
     </build>
-
     <repositories>
         <repository>
             <id>spring-releases</id>
