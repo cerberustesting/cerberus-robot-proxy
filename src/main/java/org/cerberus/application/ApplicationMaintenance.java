@@ -39,29 +39,34 @@ public class ApplicationMaintenance {
         LOG.debug("Clean media");
 
         File path = new File("./recordings");
+        if(!path.exists()){
+            path.mkdir();
+        }
 
         long cutoff = System.currentTimeMillis() - (delay * 60 * 1000);
         File[] oldFiles = path.listFiles((FileFilter) new AgeFileFilter(cutoff));
 
-        for (File file : oldFiles) {
-            //First empty if directory
-            if (file.isDirectory()) {
-                String[] entries = file.list();
-                for (String s : entries) {
-                    File currentFile = new File(file.getPath(), s);
-                    LOG.info("Automatically Deleting Files : " + currentFile.getPath());
-                    currentFile.delete();
+        if (oldFiles != null) {
+            for (File file : oldFiles) {
+                //First empty if directory
+                if (file.isDirectory()) {
+                    String[] entries = file.list();
+                    for (String s : entries) {
+                        File currentFile = new File(file.getPath(), s);
+                        LOG.info("Automatically Deleting Files : " + currentFile.getPath());
+                        currentFile.delete();
+                    }
+                    //Delete the object in memory
+                    try {
+                        uuidRepository.removeSession(file.getName());
+                    } catch (Exception ex) {
+                        LOG.warn(ex);
+                    }
                 }
-                //Delete the object in memory
-                try {
-                    uuidRepository.removeSession(file.getName());
-                } catch (Exception ex) {
-                    LOG.warn(ex);
-                }
+                //Then delete folder
+                LOG.info("Automatically Deleting Files : " + file.getPath());
+                file.delete();
             }
-            //Then delete folder
-            LOG.info("Automatically Deleting Files : " + file.getPath());
-            file.delete();
         }
     }
 }

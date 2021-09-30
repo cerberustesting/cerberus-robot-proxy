@@ -8,10 +8,7 @@ package org.cerberus.proxy;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
 import net.lightbody.bmp.BrowserMobProxy;
 import net.lightbody.bmp.BrowserMobProxyServer;
 import net.lightbody.bmp.core.har.Har;
@@ -20,10 +17,10 @@ import net.lightbody.bmp.core.har.HarLog;
 import net.lightbody.bmp.proxy.CaptureType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.cerberus.repository.MySessionProxiesRepository;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
@@ -31,12 +28,12 @@ import org.springframework.stereotype.Service;
  * @author bcivel
  */
 @Service
-public class MyProxyService {
+public class MyBrowserMobProxyService {
 
-    private static final Logger LOG = LogManager.getLogger(MyProxyService.class);
+    private static final Logger LOG = LogManager.getLogger(MyBrowserMobProxyService.class);
 
     @Autowired
-    MyProxy myProxy;
+    MySessionProxiesRepository mySessionProxiesRepository;
 
     /**
      * Start Proxy on specific Port. If port = 0, a random free port will be
@@ -45,11 +42,16 @@ public class MyProxyService {
      * @param port
      * @return BrowserMobProxy
      */
-    public BrowserMobProxy startProxy(int port) {
+    public BrowserMobProxy startProxy(int port, boolean enableCapture) {
 
         BrowserMobProxy proxy = new BrowserMobProxyServer();
         proxy.setTrustAllServers(true);
-        proxy.enableHarCaptureTypes(EnumSet.allOf(CaptureType.class));
+        if(enableCapture) {
+            proxy.enableHarCaptureTypes(EnumSet.allOf(CaptureType.class));
+        } else {
+            proxy.disableHarCaptureTypes(EnumSet.allOf(CaptureType.class));
+        }
+
         proxy.start(port);
         proxy.newHar();
 
@@ -68,7 +70,7 @@ public class MyProxyService {
     public Har getHar(String uuid, String requestUrlPattern, boolean emptyResponseContentText) {
 
         Har response;
-        BrowserMobProxy proxy = myProxy.getProxy(uuid);
+        BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
 
         if (!"".equals(requestUrlPattern) || emptyResponseContentText) {
             response = getFilteredHar(proxy.getHar(), requestUrlPattern, emptyResponseContentText);
@@ -89,7 +91,7 @@ public class MyProxyService {
      * @param emptyResponseContentText
      * @return
      */
-    public Har getFilteredHar(Har har, String requestUrlPattern, boolean emptyResponseContentText) {
+    private Har getFilteredHar(Har har, String requestUrlPattern, boolean emptyResponseContentText) {
 
         Har response = new Har();
 
@@ -169,13 +171,25 @@ public class MyProxyService {
     }
 
     /**
+     * Clear HAR
+     * @param uuid
+     */
+    public void clearHar(String uuid) {
+        BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
+        proxy.newHar();
+    }
+
+    /**
      * Stop Specific proxy
      * @param uuid 
      */
-    public void stopProxy(String uuid) {
-        BrowserMobProxy proxy = myProxy.getProxy(uuid);
-        proxy.stop();
-        myProxy.removeProxy(uuid);
+    public void stop(String uuid) {
+        BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
+        if(proxy!=null && proxy.isStarted()) {
+            LOG.info("Stopping BrowserMobProxy : '" + uuid + "'");
+            proxy.stop();
+            LOG.info("BrowserMobProxy : '" + uuid + "' stopped");
+        }
     }
     
     /**
@@ -187,30 +201,12 @@ public class MyProxyService {
         
         try {
             
-            BrowserMobProxy proxy = myProxy.getProxy(uuid);
+            BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
             response.put("hits", proxy.getHar().getLog().getEntries().size());
             
         } catch (JSONException ex) {
             LOG.warn(ex);
         }
         return response;
-    }
-
-    /**
-     * Scheduled Task that kill proxy
-     */
-    @Scheduled(cron = "${scheduledtask.killproxy}")
-    public void killProxy() {
-        LOG.debug("Check if outdated proxy to kill");
-        HashMap<String, Date> map = new HashMap(myProxy.getProxyTimeoutList());
-        Date now = new Date();
-
-        for (Map.Entry<String, Date> entry : map.entrySet()) {
-            if (((Date) entry.getValue()).before(now)) {
-                LOG.warn("Automatically Killing Proxy : " + entry.getKey());
-                this.stopProxy(entry.getKey());
-                LOG.warn("Successfully Killed Proxy : " + entry.getKey());
-            }
-        }
     }
 }

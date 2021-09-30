@@ -5,17 +5,12 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.List;
 import java.util.logging.Level;
 import javax.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import net.lightbody.bmp.BrowserMobProxy;
 import net.lightbody.bmp.core.har.Har;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,14 +26,13 @@ public class MyProxyController {
     private static final Logger LOG = LogManager.getLogger(MyProxyController.class);
 
     @Autowired
-    MyProxy myProxy;
+    MySessionProxiesService mySessionProxiesService;
     @Autowired
-    MyProxyService myProxyService;
+    MyBrowserMobProxyService myBrowserMobProxyService;
 
     /**
      * Check server is Up
      *
-     * @param port
      * @return
      */
     @ApiOperation(value = "Check if cerberus-executor is up")
@@ -64,31 +58,43 @@ public class MyProxyController {
     }
     )
     @RequestMapping(value = "/startProxy", method = RequestMethod.GET)
-    public String startProxy(@RequestParam(value = "port", defaultValue = "0") int port,
-            @RequestParam(value = "timeout", defaultValue = "${proxy.defaulttimeout}") int timeout) {
+    public String start(@RequestParam(value = "port", defaultValue = "0") int port,
+            @RequestParam(value = "timeout", defaultValue = "${proxy.defaulttimeout}") int timeout,
+            @RequestParam(value = "enableCapture", defaultValue = "${proxy.defaultenablecapture}") boolean enableCapture,
+            @RequestParam(value = "bsLocalProxyActive", defaultValue = "${proxy.defaultlocalproxyactive}") boolean bsLocalProxyActive,
+            @RequestParam(value = "bsKey", defaultValue = "") String bsKey,
+            @RequestParam(value = "bsLocalIdentifier", defaultValue = "") String bsLocalIdentifier,
+            @RequestParam(value = "bsLocalProxyHost", defaultValue = "") String bsLocalProxyHost){
 
         String response;
-        UUID uuid = UUID.randomUUID();
 
-        //Start proxy on specific port (or random)
-        LOG.info("Start Proxy '" + uuid + "'");
-        BrowserMobProxy proxy = myProxyService.startProxy(port);
+        if (bsLocalProxyActive && (bsKey.equals("")||bsLocalIdentifier.equals("")||bsLocalProxyHost.equals(""))){
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\"status\":\"Error\",");
+            sb.append("\"message\":\"bsLocalProxyActive equals to true, so parameters bsKey, bsLocalIdentifier and bsLocalProxyHost cannot be empty\",");
+            sb.append("\"bsKey\":\""+bsKey+"\",");
+            sb.append("\"bsLocalIdentifier\":\""+bsLocalIdentifier+"\",");
+            sb.append("\"bsLocalProxyHost\":\""+bsLocalProxyHost+"\"}");
 
-        //Calculate the max date for the proxy to be alive
-        Date now = new Date();
-        Calendar c = Calendar.getInstance();
-        c.setTime(now);
-        c.add(Calendar.MILLISECOND, timeout);
-        Date maxDateUp = c.getTime();
+            return sb.toString();
+        }
 
-        //Get port 
-        port = proxy.getPort();
-        LOG.info("Proxy '" + uuid + "' started on port :" + port + " until :" + maxDateUp);
+        MySessionProxies msp = mySessionProxiesService.start(port, timeout, enableCapture, bsLocalProxyActive, bsKey, bsLocalIdentifier, bsLocalProxyHost);
 
-        //Add Started proxy to the list
-        myProxy.addProxy(uuid.toString(), proxy, maxDateUp);
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"status\":\"Success\",");
+        sb.append("\"message\":\"Successfully started proxy\",");
+        sb.append("\"port\":"+msp.getPort()+",");
+        sb.append("\"timeout\":"+timeout+",");
+        sb.append("\"enableCapture\":"+enableCapture+",");
+        sb.append("\"uuid\":\""+msp.getUuid()+"\",");
+        sb.append("\"maxDateUp\":\""+msp.getEndDateMessage()+"\",");
+        sb.append("\"bsLocalProxyActive\":\""+bsLocalProxyActive+"\",");
+        sb.append("\"bsKey\":\""+bsKey+"\",");
+        sb.append("\"bsLocalIdentifier\":\""+bsLocalIdentifier+"\",");
+        sb.append("\"bsLocalProxyHost\":\""+bsLocalProxyHost+"\"}");
 
-        response = "{\"port\":" + port + ",\"uuid\" : \"" + uuid + "\",\"maxDateUp\" : \"" + maxDateUp + "\"}";
+        response = sb.toString();
 
         return response;
     }
@@ -111,7 +117,7 @@ public class MyProxyController {
         String response = "";
         LOG.info("Get Har for Proxy : '" + uuid + "'");
 
-        Har har = myProxyService.getHar(uuid, requestUrl, emptyResponseContentText);
+        Har har = myBrowserMobProxyService.getHar(uuid, requestUrl, emptyResponseContentText);
 
         LOG.info("Har for proxy '" + uuid + "' generated");
 
@@ -132,7 +138,7 @@ public class MyProxyController {
         String response;
         LOG.info("Get Har MD5 for Proxy '" + uuid + "'");
 
-        response = myProxyService.getHarMD5(uuid, requestUrl);
+        response = myBrowserMobProxyService.getHarMD5(uuid, requestUrl);
 
         LOG.info("Har MD5 for proxy '" + uuid + "' : " + response);
 
@@ -144,9 +150,8 @@ public class MyProxyController {
 
         String response = "";
 
-        BrowserMobProxy proxy = myProxy.getProxy(uuid);
+        myBrowserMobProxyService.clearHar(uuid);
 
-        proxy.newHar();
         response = "Har cleared, new Har generated";
 
         return response;
@@ -157,15 +162,14 @@ public class MyProxyController {
 
         String response = "";
         JSONArray ja = new JSONArray();
-        HashMap<String, BrowserMobProxy> proxyList = myProxy.getProxyList();
-        try {
-            for (Map.Entry<String, BrowserMobProxy> item : proxyList.entrySet()) {
-                JSONObject jo = new JSONObject();
-                String key = item.getKey();
-                BrowserMobProxy proxy = item.getValue();
+        List<MySessionProxies> mspList = mySessionProxiesService.mySessionProxiesList();
 
-                jo.put("uuid", key);
-                jo.put("port", proxy.getPort());
+        try {
+            for (MySessionProxies msp : mspList) {
+                JSONObject jo = new JSONObject();
+
+                jo.put("uuid", msp.getUuid().toString());
+                jo.put("port", msp.getPort());
                 ja.put(jo);
             }
         } catch (JSONException ex) {
@@ -180,7 +184,7 @@ public class MyProxyController {
 
         String response = "";
         LOG.info("Stop Proxy : '" + uuid + "'");
-        myProxyService.stopProxy(uuid);
+        mySessionProxiesService.stop(uuid);
 
         response = "{\"message\":\"Proxy successfully stopped\",\"uuid\" : \"" + uuid + "\"}";
 
@@ -192,7 +196,7 @@ public class MyProxyController {
 
         String response = "";
 
-        JSONObject hits = myProxyService.getStats(uuid);
+        JSONObject hits = myBrowserMobProxyService.getStats(uuid);
         response = hits.toString();
 
         return response;

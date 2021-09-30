@@ -16,10 +16,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @ComponentScan(basePackages = {"org.cerberus.application",
     "org.cerberus.screenrecorder",
     "org.cerberus.repository",
-    "org.cerberus.proxy",
-    "org.cerberus.screenshot",
-    "org.cerberus.vncclient",
-    "org.cerberus.speedindex"})
+    "org.cerberus.proxy"})
 @EnableScheduling
 @EnableSwagger2
 @PropertySource("classpath:application.properties")
