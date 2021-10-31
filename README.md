@@ -24,8 +24,8 @@ java -jar cerberus-executor.jar --spring.config.location=classpath:application.p
 Start a proxy using the API `http://localhost:8093/startProxy` 
 - Parameters : 
   - `port` : The port of the proxy to start (make sure it's not already in used). If port is empty or equals to 0, a random port will be defined.
-  - `timeout` : Timeout in ms. Default value is 3600000
-  - `enableCapture` : Boolean that define if MITM proxy capture element or not. Default value is false (set into application.properties proxy.defaultenablecapture)
+  - `timeout` : Timeout in ms. Default value is 3600000 (1 H)
+  - `enableCapture` : Boolean that define if MITM proxy capture element or not. Default value is true (set into application.properties proxy.defaultenablecapture)
   - `bsLocalProxyActive` : Boolean that define if BrowserStack local proxy is active. Default value is false (set into application.properties proxy.defaultlocalproxyactive). If set to true, `bsKey`, `bsLocalIdentifier` and `bsLocalProxyHost` cannot be empty.
   - `bsKey` : BrowserStack key used by browserstack local proxy
   - `bsLocalIdentifier` : BrowserStack local identifier to link local proxy session with BrowserStack execution
