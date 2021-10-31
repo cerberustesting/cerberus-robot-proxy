@@ -48,7 +48,7 @@ public class MySessionProxiesService {
         //Calculate the max date for the proxy to be alive. Keep null if timeout = 0
         Date maxDateUp = null;
         String endDateMessage = "infinite timeout";
-        if(timeout!=0) {
+        if (timeout != 0) {
             Date now = new Date();
             Calendar c = Calendar.getInstance();
             c.setTime(now);
@@ -67,7 +67,7 @@ public class MySessionProxiesService {
         LOG.info("Proxy '" + uuid + "' started on port :" + bmp.getPort() + " until :" + endDateMessage);
 
         //Start BrowserStack proxy
-        if(bsLocalProxyActive) {
+        if (bsLocalProxyActive) {
             LOG.info("Start BrowserStackLocalProxy '" + uuid + "'");
             Local local = myBrowserStackLocalService.startBsLocal(uuid.toString(), bsKey, bsLocalIdentifier, bsLocalProxyHost, bmp.getPort());
             msp.setBrowserStackLocal(local);
@@ -82,7 +82,8 @@ public class MySessionProxiesService {
 
     /**
      * Stop Specific proxy
-     * @param uuid 
+     *
+     * @param uuid
      */
     public void stop(String uuid) {
         myBrowserMobProxyService.stop(uuid);
@@ -90,7 +91,7 @@ public class MySessionProxiesService {
         mySessionProxiesRepository.removeMySessionProxies(uuid);
     }
 
-    public List<MySessionProxies> mySessionProxiesList(){
+    public List<MySessionProxies> mySessionProxiesList() {
         HashMap<String, MySessionProxies> mspMap = mySessionProxiesRepository.getMySessionProxiesList();
         List<MySessionProxies> mspList = new ArrayList<>(mspMap.values());
         return mspList;
@@ -104,13 +105,18 @@ public class MySessionProxiesService {
         LOG.debug("Check if outdated proxy to kill");
         Date now = new Date();
 
-        for (Map.Entry<String, MySessionProxies> msp : mySessionProxiesRepository.getMySessionProxiesList().entrySet()){
+        List<String> mspToStop = new ArrayList<>();
 
-            if (((Date) msp.getValue().getMaxDateUp()).before(now)) {
-                LOG.warn("Automatically Killing Proxy : " + msp.getKey());
-                this.stop(msp.getKey());
-                LOG.warn("Successfully Killed Proxy : " + msp.getKey());
-            }
+        // Selecting all Proxy that needs to be stopped.
+        mySessionProxiesRepository.getMySessionProxiesList().entrySet().stream().filter(msp -> ((msp.getValue().getMaxDateUp() != null) && ((Date) msp.getValue().getMaxDateUp()).before(now))).forEachOrdered(msp -> {
+            mspToStop.add(msp.getKey());
+        });
+
+        for (String mspKeyToStop : mspToStop) {
+            LOG.warn("Automatically Killing Proxy : " + mspKeyToStop);
+            this.stop(mspKeyToStop);
+            LOG.warn("Successfully Killed Proxy : " + mspKeyToStop);
         }
+
     }
 }
