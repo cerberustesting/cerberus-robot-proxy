@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import net.lightbody.bmp.core.har.Har;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.cerberus.robot.proxy.version.Infos;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,14 +36,53 @@ public class MyProxyController {
      *
      * @return
      */
-    @ApiOperation(value = "Check if cerberus-executor is up")
+    @ApiOperation(value = "Check if cerberus-robot-proxy is up")
     @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "cerberus-executor is up")
+        @ApiResponse(code = 200, message = "cerberus-robot-proxy is up")
     }
     )
     @RequestMapping(value = "/check", method = RequestMethod.GET)
     public String check() {
         return "{\"message\":\"OK\"}";
+    }
+
+    /**
+     * Get Proxy information
+     *
+     * @return
+     */
+    @ApiOperation(value = "Get cerberus-robot-proxy various informations")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "cerberus-robot-proxy information provided")
+    }
+    )
+    @RequestMapping(value = "/management", method = RequestMethod.GET)
+    public String management() {
+
+        JSONObject actionResult = new JSONObject();
+        Infos infos = new Infos();
+
+        try {
+            actionResult.put("status", "OK");
+            actionResult.put("version", infos.getProjectNameAndVersion());
+            actionResult.put("buildid", infos.getProjectBuildId());
+            actionResult.put("java.prop-log4j.logger", System.getProperty("log4j.logger"));
+            actionResult.put("java.prop-java.io.tmpdir", System.getProperty("java.io.tmpdir"));
+            actionResult.put("java.prop-authorisedFolderScope", System.getProperty("authorisedFolderScope"));
+
+            actionResult.put("javaVersion", System.getProperty("java.version"));
+            Runtime instance = Runtime.getRuntime();
+            int mb = 1024 * 1024;
+            actionResult.put("javaFreeMemory", instance.freeMemory() / mb);
+            actionResult.put("javaTotalMemory", instance.totalMemory() / mb);
+            actionResult.put("javaUsedMemory", (instance.totalMemory() - instance.freeMemory()) / mb);
+            actionResult.put("javaMaxMemory", instance.maxMemory() / mb);
+
+        } catch (JSONException ex) {
+            java.util.logging.Logger.getLogger(MyProxyController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        return actionResult.toString();
     }
 
     /**
@@ -64,17 +104,17 @@ public class MyProxyController {
             @RequestParam(value = "bsLocalProxyActive", defaultValue = "${proxy.defaultlocalproxyactive}") boolean bsLocalProxyActive,
             @RequestParam(value = "bsKey", defaultValue = "") String bsKey,
             @RequestParam(value = "bsLocalIdentifier", defaultValue = "") String bsLocalIdentifier,
-            @RequestParam(value = "bsLocalProxyHost", defaultValue = "") String bsLocalProxyHost){
+            @RequestParam(value = "bsLocalProxyHost", defaultValue = "") String bsLocalProxyHost) {
 
         String response;
 
-        if (bsLocalProxyActive && (bsKey.equals("")||bsLocalIdentifier.equals("")||bsLocalProxyHost.equals(""))){
+        if (bsLocalProxyActive && (bsKey.equals("") || bsLocalIdentifier.equals("") || bsLocalProxyHost.equals(""))) {
             StringBuilder sb = new StringBuilder();
             sb.append("{\"status\":\"Error\",");
             sb.append("\"message\":\"bsLocalProxyActive equals to true, so parameters bsKey, bsLocalIdentifier and bsLocalProxyHost cannot be empty\",");
-            sb.append("\"bsKey\":\""+bsKey+"\",");
-            sb.append("\"bsLocalIdentifier\":\""+bsLocalIdentifier+"\",");
-            sb.append("\"bsLocalProxyHost\":\""+bsLocalProxyHost+"\"}");
+            sb.append("\"bsKey\":\"" + bsKey + "\",");
+            sb.append("\"bsLocalIdentifier\":\"" + bsLocalIdentifier + "\",");
+            sb.append("\"bsLocalProxyHost\":\"" + bsLocalProxyHost + "\"}");
 
             return sb.toString();
         }
@@ -84,15 +124,15 @@ public class MyProxyController {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"status\":\"Success\",");
         sb.append("\"message\":\"Successfully started proxy\",");
-        sb.append("\"port\":"+msp.getPort()+",");
-        sb.append("\"timeout\":"+timeout+",");
-        sb.append("\"enableCapture\":"+enableCapture+",");
-        sb.append("\"uuid\":\""+msp.getUuid()+"\",");
-        sb.append("\"maxDateUp\":\""+msp.getEndDateMessage()+"\",");
-        sb.append("\"bsLocalProxyActive\":\""+bsLocalProxyActive+"\",");
-        sb.append("\"bsKey\":\""+bsKey+"\",");
-        sb.append("\"bsLocalIdentifier\":\""+bsLocalIdentifier+"\",");
-        sb.append("\"bsLocalProxyHost\":\""+bsLocalProxyHost+"\"}");
+        sb.append("\"port\":" + msp.getPort() + ",");
+        sb.append("\"timeout\":" + timeout + ",");
+        sb.append("\"enableCapture\":" + enableCapture + ",");
+        sb.append("\"uuid\":\"" + msp.getUuid() + "\",");
+        sb.append("\"maxDateUp\":\"" + msp.getEndDateMessage() + "\",");
+        sb.append("\"bsLocalProxyActive\":\"" + bsLocalProxyActive + "\",");
+        sb.append("\"bsKey\":\"" + bsKey + "\",");
+        sb.append("\"bsLocalIdentifier\":\"" + bsLocalIdentifier + "\",");
+        sb.append("\"bsLocalProxyHost\":\"" + bsLocalProxyHost + "\"}");
 
         response = sb.toString();
 
@@ -121,7 +161,7 @@ public class MyProxyController {
 
         LOG.info("Har for proxy '" + uuid + "' generated");
 
-        try ( StringWriter stringwriter = new StringWriter()) {
+        try (StringWriter stringwriter = new StringWriter()) {
             har.writeTo(stringwriter);
             response = stringwriter.toString();
         } catch (Exception ex) {
