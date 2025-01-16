@@ -3,14 +3,19 @@ package org.cerberus.robot.proxy.proxy;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import java.io.IOException;
-import java.io.StringWriter;
+
+import java.io.*;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import javax.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+
+import net.lightbody.bmp.mitm.CertificateInfo;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import net.lightbody.bmp.core.har.Har;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,7 +24,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 @RestController
 public class MyProxyController {
@@ -240,5 +244,32 @@ public class MyProxyController {
         response = hits.toString();
 
         return response;
+    }
+
+    @PostMapping(value = "/certs/generate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "application/zip")
+    public ResponseEntity<byte[]> generateCerts(
+            @RequestBody Map<String, String> body
+    ) {
+        if ((body.get("notBeforeDate") == null || body.get("notBeforeDate").isEmpty())
+                || (body.get("notAfterDate") == null || body.get("notAfterDate").isEmpty())
+                || (body.get("password") == null || body.get("password").isEmpty())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        String commonName = body.get("commonName");
+        String organization = body.get("organization");
+        Map<String, Date> dates = myBrowserMobProxyService.formatDates(body.get("notBeforeDate"), body.get("notAfterDate"));
+        String password = body.get("password");
+
+        CertificateInfo certificateInfo = myBrowserMobProxyService.generateCertificateInfo(commonName, organization, dates.get("notBeforeDate"), dates.get("notAfterDate"));
+
+        myBrowserMobProxyService.createCertificateFiles(certificateInfo, password);
+
+        ByteArrayOutputStream byteArrayOutputStream = myBrowserMobProxyService.createZip();
+
+        return ResponseEntity
+                .ok()
+                .header("Content-Disposition", "attachment; filename=\"certificate-files.zip\"")
+                .body(byteArrayOutputStream.toByteArray());
     }
 }

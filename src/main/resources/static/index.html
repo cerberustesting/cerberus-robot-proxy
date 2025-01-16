@@ -18,6 +18,7 @@ and open the template in the editor.
         <script src="webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
         <script src="js/cerberus-executor.js"></script>
         <script src="js/cerberus-executor-proxy.js"></script>
+        <script src="js/cerberus-proxy-certificates.js"></script>
         <script src="js/cerberus-executor-screenrecorder.js"></script>
         <script src="js/websocket.js"></script>
         <script src="js/sockjs-0.3.4.js"></script>
@@ -32,9 +33,9 @@ and open the template in the editor.
     </head>
     <body>
         <div class="sidebar-nav navbar" style="background-color: #333;color:white">
-            <h2><img id="logo" alt="Cerberus" style="width:50px; weight:50px" src="img/Logo-cerberus_menu.png"/> Cerberus Executor</h2>
+            <h2><img id="logo" alt="Cerberus" style="width:50px; weight:50px" src="img/Logo-cerberus_menu.png"/> Cerberus Robot Proxy</h2>
         </div>
-        <h5 class="page-title-line" id="title">Cerberus Executor is up and Running...</h5>
+        <h5 class="page-title-line" id="title">Cerberus Robot Proxy is up and running...</h5>
         <div class="card">
             <div class="card-title">
                 <ion-icon name="apps"></ion-icon>
@@ -45,14 +46,14 @@ and open the template in the editor.
                     <li class="nav-item">
                         <a class="nav-link active" id="proxy-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true" href="#tabProxy">Proxy</a>
                     </li>
-                    <li>
-                        <a class="nav-link" id="video-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabVideo">Screen Recorder</a>
-                    </li>
 <!--                    <li class="nav-item">
                         <a class="nav-link" id="performance-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabPerformances">Speed Index</a>
                     </li>-->
                     <li>
                         <a class="nav-link" id="documentation-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabDocumentation">Documentation</a>
+                    </li>
+                    <li>
+                        <a class="nav-link" id="certificate-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabCertificate">Certificate</a>
                     </li>
                     <!--                    <li>
                                             <a class="nav-link" id="command-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabCommand">Command</a>
@@ -89,9 +90,6 @@ and open the template in the editor.
                                 <label for="vncPassword">VNC Password</label>
                                 <input type="text" class="form-control" id="vncPassword" name="vncPassword" required>
                             </div>
-                            <div class="col-md-2 mb-3">
-                                <button class="btn btn-primary" type="submit"><ion-icon name="play"></ion-icon> Start Recorder</button>
-                            </div>
                         </div>
                     </form>
                 </div>
@@ -113,15 +111,58 @@ and open the template in the editor.
                         </div>
                     </div>
                     <br><hr/><br>
-                    <h5 class="page-title-line">Screen Recorder :</h5>
-                    <div class="row"><ul id="my-screen-recorder-controller" class="col-lg-6 list-group"></ul>
-                        <div class="col-lg-6">
-                        <figure class="figure">
-                            <img id="workflowProxy" src="img/workflowScreenrecorder.png" class="figure-img img-fluid rounded" width="640" height="480" >
-                            <figcaption class="figure-caption">ScreenRecorder Sequence Diagram</figcaption>
-                        </figure>
+                </div>
+                <div class="tab-pane fade" role="tabpanel" aria-labelledby="certificate-tab" id="tabCertificate">
+                    <p>You can generate here a certificate (ca-certificate-rsa.cer) with associate private key (ca-key-rsa.pem). You can install this certificate in the devices that uses the proxy.</p>
+                    <p>A keystore file (ca-keystore-rsa.p12) is also generated. This file needs to be exported on the machine where the Cerberus proxy is running.</p>
+                    <p>You can overwrite certificate attributes by filling this form. Only password and dates are mandatory. If CommonName and Organization are leaved empty, the default value will be used.</p>
+                    <p>Generated certificate, key and keystore are placed in cerberus-robot-proxy jar folder and downloaded on your browser.</p>
+                    <br />
+                    <p>After certificates files are generated, you need to restart the proxy and put the absolute path of the keystore and the password in CLI arguments, by this way:</p>
+                    <p>
+                        <code style="background-color: #eee; border-radius: 3px; font-family: courier, monospace; padding: 0 3px;">
+                            java -jar -DkeystorePath="&#60;aboslute_keystore_path&#62;" -DkeystorePassword="&#60;password&#62;" &#60;jar_file&#62;
+                        </code>
+                    </p>
+                    <hr>
+                    <form onsubmit="return false;">
+                        <div class="form-row">
+                            <div class="col-md-2 mb-3">
+                                <label for="commonName">Common name</label>
+                                <input type="text" class="form-control" id="commonName" name="commonName">
+                                <span style="font-size: 11px; display: block;">Default: CA dynamically generated by LittleProxy</span>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="organization">Organization</label>
+                                <input type="text" class="form-control" id="organization" name="organization">
+                                <span style="font-size: 11px; display: block;">Default: Generated CA %proxy_hostname% %current_date_time%</span>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="password">Password</label>
+                                <input type="password" class="form-control" id="password" name="organization" required>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="notBeforeDate">Not before date</label>
+                                <input type="date" class="form-control" id="notBeforeDate" name="notBeforeDate" required>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label for="notAfterDate">Not after date</label>
+                                <input type="date" class="form-control" id="notAfterDate" name="notAfterDate" required>
+                            </div>
                         </div>
-                    </div>
+                        <div>
+                            <div style="display: flex; align-items:center;">
+                                <button class="btn btn-primary" id="generateCertsButton" style="margin-right: 8px;">Generate</button>
+                                <div style="display: none;" id="loadingMessage">
+                                    <div class="small-loader" id="loader" style=""></div>
+                                    <div style="margin-left: 22px;">Generating certificates...</div>
+                                </div>
+                                <div style="display: none;" id="errorMessage">
+                                    <div style="margin-left: 22px; color: red;">An error occurred when generating files. See browser and proxy logs for details.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
                 <div class="tab-pane fade" role="tabpanel" aria-labelledby="command-tab"  id="tabCommand">
                     <input id="commandInput">
