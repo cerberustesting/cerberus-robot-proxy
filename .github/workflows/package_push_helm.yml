@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: helm lint
         run: |
-          helm lint .
+          helm lint ./helm
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ secrets.WI_POOL_PROVIDER_ID }}'
@@ -26,8 +26,8 @@ jobs:
           gcloud auth configure-docker ${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }} --quiet
       - name: helm package
         run: |
-          helm package . --version $IMAGE_TAG
+          helm package ./helm --version $IMAGE_TAG
       - name: helm push
         if: ${{ github.event_name == 'push' }}
         run: |
-          helm push $CHART_NAME-$IMAGE_TAG.tgz oci://${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }}/${{ secrets.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPOSITORY }}
+          helm push ./helm/$CHART_NAME-$IMAGE_TAG.tgz oci://${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }}/${{ secrets.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPOSITORY }}
