@@ -19,6 +19,14 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
         cache: maven
+        
+    - name: get-pom-version
+      id: pom-version
+      uses: PERES-Richard/maven-get-version-action@v3.0.0
+
+    - name: Print Maven POM project version
+      run: echo "version = ${{ steps.pom-version.outputs.version }}"
+      
     - name: Build with Maven
       run: |
         mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean install --file pom.xml
