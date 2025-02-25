@@ -19,9 +19,9 @@ jobs:
         java-version: '11'
         distribution: 'adopt'
         cache: maven
-        
-    - name: Get Version
-      uses: ./
+
+    - name: Get Project Version from pom.xml
+      uses: entimaniac/read-pom-version-action@1.0.0
       id: getVersion
       
     - name: Print the version
