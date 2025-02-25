@@ -2,7 +2,9 @@ name: package_push_helm.
 
 on:
   workflow_dispatch:
-  
+env:
+  CHART_NAME: cerberus-robot-proxy
+  IMAGE_TAG: 0.1.1  
 jobs:
   Helm:
     runs-on: ubuntu-latest
