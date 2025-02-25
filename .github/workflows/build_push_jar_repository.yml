@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build and Push to Repository
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.getVersion.outputs.version }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 11
@@ -50,6 +52,8 @@ jobs:
       attestations: write
       id-token: write
     steps:
+      - env:
+          version: ${{needs.build.outputs.version}}
       - name: Check out the repo
         uses: actions/checkout@v4
 
@@ -73,8 +77,8 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           build-args: |
-            VERSION=${{ steps.getVersion.outputs.version }}
-          tags: cerberustesting/cerberus-robot-proxy:${{ steps.getVersion.outputs.version }}
+            VERSION=${{env.version}}
+          tags: cerberustesting/cerberus-robot-proxy:${{env.version}}
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
