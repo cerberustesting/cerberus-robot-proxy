@@ -18,13 +18,18 @@ jobs:
         fetch-depth: 0   
         
     - name: Create local changes
-      run: |
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13' 
+    - run: |
         # Update values.yaml with new tag
         yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
-        sed -i 's/<version>.*<\/version>/<version>${{ inputs.version }}<\/version>/g' pom.xml
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git commit -a -m "Release ${{ inputs.version }}"
+        
+        python -c 'import xml.etree.ElementTree as ET;ET.register_namespace("", "http://maven.apache.org/POM/4.0.0");ctb=ET.TreeBuilder(insert_comments=True);xp=ET.XMLParser(target=ctb);tree=ET.parse("pom.xml", parser=xp);root=tree.getroot();version_element=root.find("{http://maven.apache.org/POM/4.0.0}version").text="toto";tree.write("pom2.xml",encoding="UTF-8",xml_declaration=True);'
+        
+       # git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        #git config --local user.name "github-actions[bot]"
+        #git commit -a -m "Release ${{ inputs.version }}"
           
     - name: Commit & Push changes
       uses: actions-js/push@master
