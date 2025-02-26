@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Build JAR and Push to Repository
+name: Continuous Integration
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build and Push to Repository
+    name: Java Build & Push
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.getVersion.outputs.version }}
@@ -43,7 +43,7 @@ jobs:
           -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source-jar}} ${{env.destination}}
 
   docker:
-    name: Push Docker image to Docker Hub
+    name: Docker Build & Push
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -88,6 +88,7 @@ jobs:
           push-to-registry: true
 
   helm:
+    name: Helm Build & Push
     runs-on: ubuntu-latest
     needs: [docker,build]
     permissions:
