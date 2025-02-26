@@ -38,7 +38,7 @@ jobs:
 
     - name: Create local changes
       run: |
-        echo ${{ steps.xml_replace.outputs.xmlstarlet_result }}
+        xmlstarlet ed -L -u "/project/version" -v "${{ inputs.version }}" pom.xml
         cat pom.xml
                 
     - name: Commit & Push changes
