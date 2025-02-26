@@ -26,7 +26,7 @@ jobs:
       uses: rvolo/xml-replace-action@v0.2
       with:
         filepath: "pom.xml"
-        xpath: "/project/version/text()"
+        xpath: "/project/version"
         replace: "${{ inputs.version }}"
 
     - name: Create local changes
