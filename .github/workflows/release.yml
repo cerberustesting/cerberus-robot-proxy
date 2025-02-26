@@ -22,6 +22,8 @@ jobs:
         # Update values.yaml with new tag
         yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
         sed -i 's/<version>.*<\/version>/<version>${{ inputs.version }}<\/version>/g' pom.xml
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
         git commit -a -m "Release ${{ inputs.version }}"
           
     - name: Commit & Push changes
