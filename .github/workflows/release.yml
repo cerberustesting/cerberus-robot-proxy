@@ -19,6 +19,8 @@ jobs:
         
     - name: Create local changes
       run: |
+        yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
+        cat ./helm/values.yaml
         tag=$(grep '<version>' pom.xml | sed 's/<version>[^-]*-\(.*\)<\/version>/\1/')
         sed -i "s/<version>.*<\/version>/<version>${{ inputs.version }}-${tag}<\/version>/" pom.xml
         cat pom.xml
