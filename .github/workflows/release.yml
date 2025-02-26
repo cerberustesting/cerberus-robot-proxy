@@ -23,10 +23,10 @@ jobs:
         yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
 
         # Update values.yaml with new tag
-        xmlstarlet --version
-        tag=$(grep '<version>' pom.xml | sed 's/<version>[^-]*-\(.*\)<\/version>/\1/')
-        sed -i "s/<version>.*<\/version>/<version>${{ inputs.version }}-${tag}<\/version>/" pom.xml
-        cat pom.xml
+        xmlstarlet -h
+        #tag=$(grep '<version>' pom.xml | sed 's/<version>[^-]*-\(.*\)<\/version>/\1/')
+        #sed -i "s/<version>.*<\/version>/<version>${{ inputs.version }}-${tag}<\/version>/" pom.xml
+        #cat pom.xml
         
     - name: Commit & Push changes
       uses: actions-js/push@master
