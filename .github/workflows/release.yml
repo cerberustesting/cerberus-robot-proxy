@@ -28,12 +28,13 @@ jobs:
         # Update values.yaml with new tag
         yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
         
-        python -c 'import xml.etree.ElementTree as ET;ET.register_namespace("", "http://maven.apache.org/POM/4.0.0");ctb=ET.TreeBuilder(insert_comments=True);xp=ET.XMLParser(target=ctb);tree=ET.parse("pom.xml", parser=xp);root=tree.getroot();version_element=root.find("{http://maven.apache.org/POM/4.0.0}version").text="${{ inputs.version }}";tree.write("pom2.xml",encoding="UTF-8",xml_declaration=True);'
+        python -c 'import xml.etree.ElementTree as ET;ET.register_namespace("", "http://maven.apache.org/POM/4.0.0");ctb=ET.TreeBuilder(insert_comments=True);xp=ET.XMLParser(target=ctb);tree=ET.parse("pom.xml", parser=xp);root=tree.getroot();version_element=root.find("{http://maven.apache.org/POM/4.0.0}version").text="${{ inputs.version }}";tree.write("pom.xml",encoding="UTF-8",xml_declaration=True);'
 
     - name: Commit and push
       run: |
         git config --local user.email "github-actions@github.com"
         git config --local user.name "github-actions"
+        git add .
         git commit -a -m "Release ${{ inputs.version }}"
         git push
           
