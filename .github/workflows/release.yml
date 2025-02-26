@@ -26,7 +26,7 @@ jobs:
       uses: Mudlet/xmlstarlet-action@master
       id: xml_replace
       with:
-        args: ed -L --update "/project/version" -v "${{ inputs.version }}" "pom.xml"
+        args: ed -L --update "/project/version" -v "${{ inputs.version }}" pom.xml
 
     - name: Create local changes
       run: |
