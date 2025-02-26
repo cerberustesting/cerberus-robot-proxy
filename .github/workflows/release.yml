@@ -21,12 +21,13 @@ jobs:
       run: |
         # Update values.yaml with new tag
         yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
-
-    - name: Modify an element in XML file
-      uses: Mudlet/xmlstarlet-action@master
-      id: xml_replace
+        
+    - name: Set logback env values
+      uses: rvolo/xml-replace-action@v0.2
       with:
-        args: ed -u "/project/version" -v "${{ inputs.version }}" pom.xml
+        filepath: "pom.xml"
+        xpath: "/project/version/text()"
+        replace: "${{ inputs.version }}"
 
     - name: Create local changes
       run: |
