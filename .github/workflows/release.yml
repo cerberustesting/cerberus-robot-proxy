@@ -1,0 +1,29 @@
+name: package_push_helm.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New Version'
+        type: string
+        required: true
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        persist-credentials: true
+        fetch-depth: 0   
+        
+    - name: Create local changes
+      run: |
+        tag=$(grep '<version>' pom.xml | sed 's/<version>[^-]*-\(.*\)<\/version>/\1/')
+        sed -i "s/<version>.*<\/version>/<version>${{ inputs.version }}-${tag}<\/version>/" pom.xml
+        cat pom.xml
+        
+    - name: Commit & Push changes
+      uses: actions-js/push@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
