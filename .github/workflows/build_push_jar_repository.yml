@@ -42,7 +42,7 @@ jobs:
         sudo rsync -chav \
           -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source-jar}} ${{env.destination}}
 
-  push_to_registry:
+  docker:
     name: Push Docker image to Docker Hub
     needs: build
     runs-on: ubuntu-latest
@@ -86,3 +86,40 @@ jobs:
           subject-name: index.docker.io/cerberustesting/cerberus-robot-proxy
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+
+  helm:
+    runs-on: ubuntu-latest
+    needs: [docker,build]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: helm lint
+        run: |
+          helm lint ./helm
+    
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: '${{ secrets.WI_POOL_PROVIDER_ID }}'
+          service_account: '${{ secrets.PACKAGER_GSA_ID }}'
+      
+      - id: 'get-credentials'
+        uses: 'google-github-actions/get-gke-credentials@v2'
+        with:
+          cluster_name: 'robot-mutualized-autopilot'
+          location: 'europe-west1'
+      
+      - name: login to artifact registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }} --quiet
+      
+      - name: helm package
+        run: |
+          helm package ./helm --version  ${{needs.build.outputs.version}}
+      
+      - name: helm push
+        env:
+          CHART_NAME: cerberus-robot-proxy
+        run: |
+          helm push $CHART_NAME-${{needs.build.outputs.version}}.tgz oci://${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }}/${{ secrets.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPOSITORY }}
