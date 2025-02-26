@@ -21,17 +21,9 @@ jobs:
       run: |
         # Update values.yaml with new tag
         yq '.image.tag = ${{ inputs.version }}' ./helm/values.yaml
-
-    - name: Modify an element in XML file
-      uses: Mudlet/xmlstarlet-action@master
-      id: xml_replace
-      with:
-        args: ed -O -u "/project/version" -v "${{ inputs.version }}" pom.xml
-
-    - name: Create local changes
-      run: |
-        cat pom.xml
-                
+        sed -i 's/<version>.*<\/version>/<version>${{ inputs.version }}<\/version>/g' pom.xml
+        git commit -a -m "Release ${{ inputs.version }}"
+          
     - name: Commit & Push changes
       uses: actions-js/push@master
       with:
