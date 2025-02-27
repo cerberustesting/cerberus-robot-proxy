@@ -63,7 +63,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create v${{ inputs.version }} '/target/*.jar#Release v${{ inputs.version }}'
+        gh release create v${{ inputs.version }} './target/*.jar#Release v${{ inputs.version }}'
           
         
 
