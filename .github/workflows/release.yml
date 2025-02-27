@@ -95,7 +95,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         ls -R
-        gh release create v${{ inputs.version }} './target/cerberus-robot-proxy-${{ inputs.version }}.jar#Release v${{ inputs.version }}'
+        gh release create v${{ inputs.version }} './cerberus-robot-proxy-${{ inputs.version }}.jar#Release v${{ inputs.version }}'
 
           
   change_next_version_push:
