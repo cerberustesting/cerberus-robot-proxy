@@ -1,4 +1,4 @@
-name: package_push_helm.
+name: _package_push_helm
 
 on:
   workflow_dispatch:
