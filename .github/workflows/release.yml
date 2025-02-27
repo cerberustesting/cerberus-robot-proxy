@@ -4,12 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'New Version'
+        description: 'Version'
+        type: string
+        required: true
+      nextVersion:
+        description: 'Next Version (-SNAPSHOT will be added automatically) '
         type: string
         required: true
  
 jobs:
-  build:
+  change_version_push_tag:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Master
@@ -27,10 +31,10 @@ jobs:
       run: |
         # Update values.yaml with new tag
         yq -i '.image.tag = "${{ inputs.version }}"' ./helm/values.yaml
-        
+        # Update pom.xml with new tag
         python -c 'import xml.etree.ElementTree as ET;ET.register_namespace("", "http://maven.apache.org/POM/4.0.0");ctb=ET.TreeBuilder(insert_comments=True);xp=ET.XMLParser(target=ctb);tree=ET.parse("pom.xml", parser=xp);root=tree.getroot();version_element=root.find("{http://maven.apache.org/POM/4.0.0}version").text="${{ inputs.version }}";tree.write("pom.xml",encoding="UTF-8",xml_declaration=True);'
 
-    - name: Commit and push
+    - name: Commit, push and tag
       run: |
         git config --local user.email "github-actions@github.com"
         git config --local user.name "github-actions"
@@ -40,7 +44,15 @@ jobs:
         git tag -a v${{ inputs.version }} -m "Release ${{ inputs.version }}."
         git push origin v${{ inputs.version }}
         
-
+  build_jar:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Master
+      uses: actions/checkout@master
+      with:
+        persist-credentials: true
+        fetch-depth: 0
+        
     - name: Set up JDK 11
       uses: actions/setup-java@v2
       with:
@@ -59,12 +71,54 @@ jobs:
       run: |
         mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean install --file pom.xml
     
+    - name: Temporarily save target repository
+      uses: actions/upload-artifact@v4
+      with:
+        name: target
+        path: ./target
+
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Retrieve saved Docker image
+      uses: actions/download-artifact@v2
+      with:
+        name: target
+        path: ./target
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh release create v${{ inputs.version }} './target/cerberus-robot-proxy-${{ inputs.version }}.jar#Release v${{ inputs.version }}'
+
           
+  change_next_version_push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Master
+      uses: actions/checkout@master
+      with:
+        persist-credentials: true
+        fetch-depth: 0   
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13' 
         
+    - name: Change values.yaml and pom.xml
+      run: |
+        # Update values.yaml with new tag
+        yq -i '.image.tag = "${{ inputs.nextVersion }}-SNAPSHOT"' ./helm/values.yaml
+        # Update pom.xml with new tag
+        python -c 'import xml.etree.ElementTree as ET;ET.register_namespace("", "http://maven.apache.org/POM/4.0.0");ctb=ET.TreeBuilder(insert_comments=True);xp=ET.XMLParser(target=ctb);tree=ET.parse("pom.xml", parser=xp);root=tree.getroot();version_element=root.find("{http://maven.apache.org/POM/4.0.0}version").text="${{ inputs.nextVersion }}-SNAPSHOT";tree.write("pom.xml",encoding="UTF-8",xml_declaration=True);'
+
+    - name: Commit, push and tag
+      run: |
+        git config --local user.email "github-actions@github.com"
+        git config --local user.name "github-actions"
+        git add .
+        git commit -a -m "Set next version ${{ inputs.nextVersion }}-SNAPSHOT"
+        git push
 
           
