@@ -49,6 +49,12 @@ jobs:
     needs: change_version_push_tag
     steps:
     - name: Checkout Master
+      uses: actions/checkout@master
+      with:
+        persist-credentials: true
+        fetch-depth: 0
+        
+    - name: Pull last commit
       run: |
         git pull origin master
         
