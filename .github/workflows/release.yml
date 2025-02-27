@@ -59,6 +59,8 @@ jobs:
         mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean install --file pom.xml
     
     - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         gh release create v${{ inputs.version }} '/target/*.jar#Release v${{ inputs.version }}'
           
