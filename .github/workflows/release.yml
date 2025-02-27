@@ -123,6 +123,7 @@ jobs:
         
     - name: Change values.yaml and pom.xml
       run: |
+        git pull origin master
         # Update values.yaml with new tag
         yq -i '.image.tag = "${{ inputs.nextVersion }}-SNAPSHOT"' ./helm/values.yaml
         # Update pom.xml with new tag
