@@ -36,6 +36,7 @@ jobs:
         git config --local user.name "github-actions"
         git add .
         git commit -a -m "Release ${{ inputs.version }}"
+        git push
         git tag -a v${{ inputs.version }} -m "Release ${{ inputs.version }}."
         git push origin v${{ inputs.version }}
         
