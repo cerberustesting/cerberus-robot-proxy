@@ -48,9 +48,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        ls -R
-        git pull origin master
-        gh release upload v${{ steps.getVersion.outputs.version }} ./cerberus-robot-proxy-${{ steps.getVersion.outputs.version }}.jar --clobber
+        gh release upload v${{ steps.getVersion.outputs.version }} ./target/cerberus-robot-proxy-${{ steps.getVersion.outputs.version }}.jar --clobber
 
   docker:
     name: Docker Build & Push
