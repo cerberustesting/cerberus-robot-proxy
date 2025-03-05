@@ -102,21 +102,12 @@ jobs:
       - name: helm lint
         run: |
           helm lint ./helm
-    
-      - uses: google-github-actions/auth@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
-          workload_identity_provider: '${{ secrets.WI_POOL_PROVIDER_ID }}'
-          service_account: '${{ secrets.PACKAGER_GSA_ID }}'
-      
-      - id: 'get-credentials'
-        uses: 'google-github-actions/get-gke-credentials@v2'
-        with:
-          cluster_name: 'robot-mutualized-autopilot'
-          location: 'europe-west1'
-      
-      - name: login to artifact registry
-        run: |
-          gcloud auth configure-docker ${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }} --quiet
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       
       - name: helm package
         run: |
@@ -126,4 +117,4 @@ jobs:
         env:
           CHART_NAME: cerberus-robot-proxy
         run: |
-          helm push $CHART_NAME-${{needs.build.outputs.version}}.tgz oci://${{ secrets.ARTIFACT_REGISTRY_HOST_NAME }}/${{ secrets.PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPOSITORY }}
+          helm push $CHART_NAME-${{needs.build.outputs.version}}.tgz oci://registry-1.docker.io/cerberustesting
