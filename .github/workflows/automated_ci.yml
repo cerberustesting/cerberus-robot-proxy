@@ -50,7 +50,7 @@ jobs:
       run: |
         ls -R
         git pull origin master
-        gh release upload v${{ inputs.version }} ./cerberus-robot-proxy-${{ inputs.version }}.jar --clobber
+        gh release upload v${{ steps.getVersion.outputs.version }} ./cerberus-robot-proxy-${{ steps.getVersion.outputs.version }}.jar --clobber
 
   docker:
     name: Docker Build & Push
