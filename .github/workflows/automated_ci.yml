@@ -44,6 +44,13 @@ jobs:
         chmod 600 ./deploy_key
         sudo rsync -chav \
           -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source-jar}} ${{env.destination}}
+    - name: Push file to Github Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        ls -R
+        git pull origin master
+        gh release upload v${{ inputs.version }} ./cerberus-robot-proxy-${{ inputs.version }}.jar --clobber
 
   docker:
     name: Docker Build & Push
