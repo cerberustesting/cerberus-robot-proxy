@@ -127,13 +127,18 @@ jobs:
         
       - name: helm package
         run: |
-          helm package helm -d ./cerberus-robot-proxy-chart
           chmod -R 777 ./cerberus-robot-proxy-chart
           ls -l
           ls -l cerberus-robot-proxy-chart
           ls -l helm
+          helm package helm -d ./cerberus-robot-proxy-chart
+          ls -l
+          ls -l cerberus-robot-proxy-chart
+          ls -l helm
           helm repo index cerberus-robot-proxy-chart --merge ./cerberus-robot-proxy-chart/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
-
+          ls -l
+          ls -l cerberus-robot-proxy-chart
+          ls -l helm
       - name: push chart to vm
         env:
           source: './cerberus-robot-proxy-chart/'
