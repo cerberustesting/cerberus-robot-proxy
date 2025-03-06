@@ -6,6 +6,7 @@
     <version>1.5-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>Cerberus Robot Proxy</name>
+
     
     <properties>
         <!-- Maven properties -->
