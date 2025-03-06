@@ -16,7 +16,7 @@ jobs:
   change_version_push_tag:
     runs-on: ubuntu-latest
     outputs:
-      previousVersion: ${{ steps.getPreviousVersion.outputs.version }}
+      version: ${{ steps.getPreviousVersion.outputs.version }}
     steps:
     - name: Checkout Master
       uses: actions/checkout@master
@@ -107,6 +107,8 @@ jobs:
         git add .
         git commit -a -m "Set next version ${{ inputs.nextVersion }}-SNAPSHOT"
         git push
+        git tag -a v${{ inputs.nextVersion }}-SNAPSHOT -m "Pre Release ${{ inputs.nextVersion }}-SNAPSHOT."
+        git push origin v${{ inputs.nextVersion }}-SNAPSHOT
 
   pre_release:
     runs-on: ubuntu-latest
@@ -123,7 +125,8 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         git fetch && git reset --hard origin/master
-        gh release edit v${{needs.change_version_push_tag.outputs.previousVersion}} --title v${{ inputs.nextVersion }}-SNAPSHOT
+        gh release delete v${{needs.change_version_push_tag.outputs.version}}
+        gh release create v${{ inputs.nextVersion }}-SNAPSHOT
 
   call_workflow_new:
     needs: pre_release
