@@ -16,7 +16,7 @@ jobs:
   change_version_push_tag:
     runs-on: ubuntu-latest
     outputs:
-      previouVersion: ${{ steps.getPreviousVersion.outputs.version }}
+      previousVersion: ${{ steps.getPreviousVersion.outputs.version }}
     steps:
     - name: Checkout Master
       uses: actions/checkout@master
@@ -68,6 +68,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
+        git checkout origin/master
         git pull origin master
         gh release create v${{ inputs.version }}
 
@@ -93,6 +94,7 @@ jobs:
         
     - name: Change values.yaml and pom.xml
       run: |
+        git checkout origin/master
         git pull origin master
         git fetch --all
         git reset --hard origin/master
@@ -119,16 +121,13 @@ jobs:
         persist-credentials: true
         fetch-depth: 0
           
-    - name: Retrieve saved Docker image
-      uses: actions/download-artifact@v4
-      with:
-        name: target
-          
     - name: Pre_Release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release edit v${{needs.change_version_push_tag.outputs.previouVersion}} --title v${{ inputs.nextVersion }}-SNAPSHOT
+        git checkout origin/master
+        git pull origin master
+        gh release edit v${{needs.change_version_push_tag.outputs.previousVersion}} --title v${{ inputs.nextVersion }}-SNAPSHOT
 
   call_workflow_new:
     needs: pre_release
