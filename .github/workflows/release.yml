@@ -205,6 +205,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh release edit v${{needs.change_version_push_tag.outputs.previouVersion}} --title v${{ inputs.nextVersion }}-SNAPSHOT
+        gh release upload v${{needs.change_version_push_tag.outputs.previouVersion}} ./target/cerberus-robot-proxy-${{ inputs.nextVersion }}.jar --clobber
 
 
           
