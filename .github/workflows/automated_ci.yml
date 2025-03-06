@@ -120,7 +120,6 @@ jobs:
           source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
         run: |
           mkdir charts
-          chmod -R 777 ./charts
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
           sudo rsync -chav \
@@ -129,6 +128,7 @@ jobs:
       - name: helm package
         run: |
           helm package helm -d ./charts
+          chmod -R 777 ./charts
           helm repo index helm --merge ./charts/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
 
       - name: get index.yaml from vm
