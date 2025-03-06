@@ -73,7 +73,7 @@ jobs:
 
   call_workflow:
     needs: create_release
-    uses: cerberustesting/cerberus-robot-proxy/.github/workflows/automated_ci.yml@master
+    uses: ./.github/workflows/automated_ci.yml
     secrets: inherit
           
   change_next_version_push:
@@ -130,7 +130,7 @@ jobs:
 
   call_workflow_new:
     needs: pre_release
-    uses: cerberustesting/cerberus-robot-proxy/.github/workflows/automated_ci.yml@master
+    uses: ./.github/workflows/automated_ci.yml
     secrets: inherit
   
         
