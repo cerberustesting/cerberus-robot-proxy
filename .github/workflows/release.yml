@@ -93,10 +93,10 @@ jobs:
         
     - name: Change values.yaml and pom.xml
       run: |
-        git checkout origin/master
         git fetch && git reset --hard origin/master
         # Update values.yaml with new tag
         yq -i '.image.tag = "${{ inputs.nextVersion }}-SNAPSHOT"' ./helm/values.yaml
+        yq -i '.version = "${{ inputs.nextVersion }}-SNAPSHOT"' ./helm/Chart.yaml
         # Update pom.xml with new tag
         python -c 'import xml.etree.ElementTree as ET;ET.register_namespace("", "http://maven.apache.org/POM/4.0.0");ctb=ET.TreeBuilder(insert_comments=True);xp=ET.XMLParser(target=ctb);tree=ET.parse("pom.xml", parser=xp);root=tree.getroot();version_element=root.find("{http://maven.apache.org/POM/4.0.0}version").text="${{ inputs.nextVersion }}-SNAPSHOT";tree.write("pom.xml",encoding="UTF-8",xml_declaration=True);'
 
@@ -122,9 +122,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        git checkout origin/master
         git fetch && git reset --hard origin/master
-        git pull origin master
         gh release edit v${{needs.change_version_push_tag.outputs.previousVersion}} --title v${{ inputs.nextVersion }}-SNAPSHOT
 
   call_workflow_new:
