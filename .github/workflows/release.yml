@@ -31,7 +31,7 @@ jobs:
 
     - name: Get Project Snapshot Version from pom.xml
       uses: entimaniac/read-pom-version-action@1.0.0
-      id: getPreviousVersion
+      id: getVersion
       
     - name: Print the version
       run: echo "The version we just got is ${{ steps.getVersion.outputs.version }}"
@@ -112,7 +112,7 @@ jobs:
 
   pre_release:
     runs-on: ubuntu-latest
-    needs: change_next_version_push
+    needs: [change_next_version_push, change_version_push_tag]
     steps:
     - name: Checkout Master
       uses: actions/checkout@master
