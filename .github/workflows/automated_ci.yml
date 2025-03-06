@@ -9,6 +9,7 @@ on:
     paths-ignore:
       - 'README.md'
       - '.github/**'
+  workflow_call:
 
 jobs:
   build:
