@@ -116,15 +116,19 @@ jobs:
 
       - name: get index.yaml from vm
         run: |
+          echo "${{secrets.DEPLOY_KEY}}" > deploy_key
+          chmod 600 ./deploy_key
           scp -i ./deploy_key -o StrictHostKeyChecking=no debian@vm.cerberus-testing.org:/opt/delivery/helm/index.yaml ./index.yaml
 
       - name: helm package
         run: |
+          ls
           helm package cerberus-robot-proxy -d ./helm
           helm repo index cerberus-robot-proxy --merge ./index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
 
       - name: push index.yaml to vm
         run: |
+          ls
           scp -i ./deploy_key -o StrictHostKeyChecking=no ./index.yaml debian@vm.cerberus-testing.org:/opt/delivery/helm/index.yaml
       
       - name: helm push
