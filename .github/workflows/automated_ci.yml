@@ -120,7 +120,6 @@ jobs:
           source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
         run: |
           mkdir cerberus-robot-proxy-chart
-          chmod -R 777 ./cerberus-robot-proxy-chart
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
           sudo rsync -chav \
@@ -129,6 +128,7 @@ jobs:
       - name: helm package
         run: |
           helm package helm -d ./cerberus-robot-proxy-chart
+          chmod -R 777 ./cerberus-robot-proxy-chart
           helm repo index cerberus-robot-proxy-chart --merge ./cerberus-robot-proxy-chart/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
 
       - name: push chart to vm
