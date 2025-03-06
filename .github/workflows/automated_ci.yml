@@ -59,7 +59,7 @@ jobs:
         git config --local user.email "github-actions@github.com"
         git config --local user.name "github-actions"
         git tag -f -a v${{ steps.getVersion.outputs.version }}
-        git push -f --tags
+        git push -f origin v${{ steps.getVersion.outputs.version }}
         gh release list
         gh release upload v${{ steps.getVersion.outputs.version }} ./target/cerberus-robot-proxy-${{ steps.getVersion.outputs.version }}.jar --clobber
 
