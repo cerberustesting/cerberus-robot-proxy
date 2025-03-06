@@ -149,7 +149,7 @@ jobs:
 
   build_new_version_jar:
     runs-on: ubuntu-latest
-    needs: release
+    needs: change_next_version_push
     steps:
     - name: Checkout Master
       uses: actions/checkout@master
@@ -187,7 +187,7 @@ jobs:
 
   pre_release:
     runs-on: ubuntu-latest
-    needs: build_jar
+    needs: build_new_version_jar
     steps:
     - name: Checkout Master
       uses: actions/checkout@master
