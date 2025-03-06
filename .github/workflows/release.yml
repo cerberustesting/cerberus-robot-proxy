@@ -16,7 +16,7 @@ jobs:
   change_version_push_tag:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.getPreviousVersion.outputs.version }}
+      version: ${{ steps.getVersion.outputs.version }}
     steps:
     - name: Checkout Master
       uses: actions/checkout@master
