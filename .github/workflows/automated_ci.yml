@@ -116,10 +116,11 @@ jobs:
 
       - name: get index.yaml from vm
         env:
-          destination: './charts'
+          destination: './cerberus-robot-proxy-chart'
           source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
         run: |
-          mkdir charts
+          mkdir cerberus-robot-proxy-chart
+          chmod -R 777 ./cerberus-robot-proxy-chart
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
           sudo rsync -chav \
@@ -127,22 +128,15 @@ jobs:
         
       - name: helm package
         run: |
-          helm package helm -d ./charts
-          chmod -R 777 ./charts
-          helm repo index helm --merge ./charts/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
+          helm package helm -d ./cerberus-robot-proxy-chart
+          helm repo index cerberus-robot-proxy-chart --merge ./cerberus-robot-proxy-chart/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
 
-      - name: get index.yaml from vm
+      - name: push chart to vm
         env:
-          source: './charts/'
+          source: './cerberus-robot-proxy-chart/'
           destination: 'debian@vm.cerberus-testing.org:/opt/delivery/helm'  
         run: |
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
           sudo rsync -chav \
             -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source}} ${{env.destination}}
-            
-      - name: helm push
-        env:
-          CHART_NAME: cerberus-robot-proxy
-        run: |
-          helm push $CHART_NAME-${{needs.build.outputs.version}}.tgz oci://registry-1.docker.io/cerberustesting
