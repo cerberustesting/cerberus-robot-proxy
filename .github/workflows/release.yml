@@ -126,7 +126,7 @@ jobs:
       run: |
         git fetch && git reset --hard origin/master
         gh release delete v${{needs.change_version_push_tag.outputs.version}}
-        gh release create v${{ inputs.nextVersion }}-SNAPSHOT
+        gh release create v${{ inputs.nextVersion }}-SNAPSHOT --draft
         git tag -d v${{needs.change_version_push_tag.outputs.version}}
         git push origin :refs/tags/v${{needs.change_version_push_tag.outputs.version}}
 
