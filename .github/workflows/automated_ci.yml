@@ -27,6 +27,10 @@ jobs:
         distribution: 'adopt'
         cache: maven
 
+    - name: pull
+      run: |
+        git pull origin master
+
     - name: Get Project Version from pom.xml
       uses: entimaniac/read-pom-version-action@1.0.0
       id: getVersion
