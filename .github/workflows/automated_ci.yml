@@ -29,7 +29,7 @@ jobs:
 
     - name: pull
       run: |
-        git pull origin master
+        git pull origin master --rebase
 
     - name: Get Project Version from pom.xml
       uses: entimaniac/read-pom-version-action@1.0.0
