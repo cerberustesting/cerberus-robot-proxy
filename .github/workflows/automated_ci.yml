@@ -12,13 +12,12 @@ on:
   workflow_call:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
     name: Java Build & Push
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.getVersion.outputs.version }}
     steps:
