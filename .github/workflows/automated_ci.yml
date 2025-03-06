@@ -127,7 +127,7 @@ jobs:
         
       - name: helm package
         run: |
-          chmod -R 777 ./cerberus-robot-proxy-chart
+          sudo chmod -R 777 ./cerberus-robot-proxy-chart
           ls -l
           ls -l cerberus-robot-proxy-chart
           ls -l helm
