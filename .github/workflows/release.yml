@@ -68,8 +68,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        git checkout origin/master
-        git pull origin master
+        git fetch && git reset --hard origin/master
         gh release create v${{ inputs.version }}
 
   call_workflow:
@@ -95,9 +94,7 @@ jobs:
     - name: Change values.yaml and pom.xml
       run: |
         git checkout origin/master
-        git pull origin master
-        git fetch --all
-        git reset --hard origin/master
+        git fetch && git reset --hard origin/master
         # Update values.yaml with new tag
         yq -i '.image.tag = "${{ inputs.nextVersion }}-SNAPSHOT"' ./helm/values.yaml
         # Update pom.xml with new tag
@@ -126,6 +123,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         git checkout origin/master
+        git fetch && git reset --hard origin/master
         git pull origin master
         gh release edit v${{needs.change_version_push_tag.outputs.previousVersion}} --title v${{ inputs.nextVersion }}-SNAPSHOT
 
