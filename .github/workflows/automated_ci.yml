@@ -116,9 +116,10 @@ jobs:
 
       - name: get index.yaml from vm
         env:
-          destination: '.'
-          source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/index.yaml'  
+          destination: './charts'
+          source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
         run: |
+          mkdir charts
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
           sudo rsync -chav \
@@ -126,14 +127,13 @@ jobs:
         
       - name: helm package
         run: |
-          ls
-          helm package cerberus-robot-proxy -d ./helm
-          helm repo index cerberus-robot-proxy --merge ./index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
+          helm package helm -d ./charts
+          helm repo index helm --merge ./charts/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
 
       - name: get index.yaml from vm
         env:
-          source: './index.yaml'
-          destination: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
+          source: './charts/'
+          destination: 'debian@vm.cerberus-testing.org:/opt/delivery/helm'  
         run: |
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
