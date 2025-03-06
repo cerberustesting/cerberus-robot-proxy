@@ -115,22 +115,31 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: get index.yaml from vm
+        env:
+          destination: '.'
+          source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/index.yaml'  
         run: |
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
-          scp -i ./deploy_key -o StrictHostKeyChecking=no debian@vm.cerberus-testing.org:/opt/delivery/helm/index.yaml ./index.yaml
-
+          sudo rsync -chav \
+            -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source}} ${{env.destination}}
+        
       - name: helm package
         run: |
           ls
           helm package cerberus-robot-proxy -d ./helm
           helm repo index cerberus-robot-proxy --merge ./index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
 
-      - name: push index.yaml to vm
+      - name: get index.yaml from vm
+        env:
+          source: './index.yaml'
+          destination: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
         run: |
-          ls
-          scp -i ./deploy_key -o StrictHostKeyChecking=no ./index.yaml debian@vm.cerberus-testing.org:/opt/delivery/helm/index.yaml
-      
+          echo "${{secrets.DEPLOY_KEY}}" > deploy_key
+          chmod 600 ./deploy_key
+          sudo rsync -chav \
+            -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source}} ${{env.destination}}
+            
       - name: helm push
         env:
           CHART_NAME: cerberus-robot-proxy
