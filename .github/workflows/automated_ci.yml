@@ -31,6 +31,7 @@ jobs:
 
     - name: pull
       run: |
+        git checkout origin/master
         git pull origin master --rebase
 
     - name: Get Project Version from pom.xml
