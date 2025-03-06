@@ -56,6 +56,8 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
+        git tag -f -a v${{ steps.getVersion.outputs.version }}
+        git push -f --tags
         gh release list
         gh release upload v${{ steps.getVersion.outputs.version }} ./target/cerberus-robot-proxy-${{ steps.getVersion.outputs.version }}.jar --clobber
 
