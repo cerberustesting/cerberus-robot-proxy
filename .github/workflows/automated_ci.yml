@@ -31,8 +31,7 @@ jobs:
 
     - name: pull
       run: |
-        git checkout origin/master
-        git pull origin master --rebase
+        git fetch && git reset --hard origin/master
 
     - name: Get Project Version from pom.xml
       uses: entimaniac/read-pom-version-action@1.0.0
@@ -138,17 +137,8 @@ jobs:
       - name: helm package
         run: |
           sudo chmod -R 777 ./cerberus-robot-proxy-chart
-          ls -l
-          ls -l cerberus-robot-proxy-chart
-          ls -l helm
           helm package helm -d ./cerberus-robot-proxy-chart
-          ls -l
-          ls -l cerberus-robot-proxy-chart
-          ls -l helm
           helm repo index cerberus-robot-proxy-chart --merge ./cerberus-robot-proxy-chart/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
-          ls -l
-          ls -l cerberus-robot-proxy-chart
-          ls -l helm
       - name: push chart to vm
         env:
           source: './cerberus-robot-proxy-chart/'
