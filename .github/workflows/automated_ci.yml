@@ -120,6 +120,7 @@ jobs:
           source: 'debian@vm.cerberus-testing.org:/opt/delivery/helm/'  
         run: |
           mkdir charts
+          chmod -R 777 ./charts
           echo "${{secrets.DEPLOY_KEY}}" > deploy_key
           chmod 600 ./deploy_key
           sudo rsync -chav \
