@@ -10,7 +10,7 @@ ENV PACKAGE_NAME=cerberus-robot-proxy-$VERSION.jar
 # Install Python + mitmproxy
 RUN apt-get update && \
     apt-get install -y python3 python3-pip wget && \
-    pip3 install --no-cache-dir mitmproxy && \
+    pip3 install --no-cache-dir --break-system-packages mitmproxy && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 #wget https://vm.cerberus-testing.org/delivery/cerberus-robot-proxy-$VERSION.jar
