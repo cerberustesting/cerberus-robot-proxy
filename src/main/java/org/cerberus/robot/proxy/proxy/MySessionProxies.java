@@ -7,6 +7,12 @@ package org.cerberus.robot.proxy.proxy;
 
 import com.browserstack.local.Local;
 import net.lightbody.bmp.BrowserMobProxy;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -16,61 +22,32 @@ import java.util.UUID;
  *
  * @author bcivel
  */
+@Getter
+@Setter
+@Builder
+@EqualsAndHashCode
+@AllArgsConstructor
+@NoArgsConstructor
 @Service
 public class MySessionProxies {
+
+    public static final String PROXY_TYPE_MITMPROXY = "mitmproxy";
+    public static final String PROXY_TYPE_BROWSERMOB = "browsermob";
 
     private UUID uuid;
     private Integer port;
     private BrowserMobProxy browserMobProxy;
+    private Process mitmProcess;
+    private Integer mitmApiPort;
     private Local browserStackLocal;
     private Date maxDateUp;
     private String endDateMessage;
 
-    public UUID getUuid() {
-        return uuid;
+    public boolean isMitmproxy() {
+        return mitmProcess != null;
     }
 
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public void setPort(Integer port) {
-        this.port = port;
-    }
-
-    public String getEndDateMessage() {
-        return endDateMessage;
-    }
-
-    public void setEndDateMessage(String endDateMessage) {
-        this.endDateMessage = endDateMessage;
-    }
-
-    public BrowserMobProxy getBrowserMobProxy() {
-        return browserMobProxy;
-    }
-
-    public void setBrowserMobProxy(BrowserMobProxy browserMobProxy) {
-        this.browserMobProxy = browserMobProxy;
-    }
-
-    public Local getBrowserStackLocal() {
-        return browserStackLocal;
-    }
-
-    public void setBrowserStackLocal(Local browserStackLocal) {
-        this.browserStackLocal = browserStackLocal;
-    }
-
-    public Date getMaxDateUp() {
-        return maxDateUp;
-    }
-
-    public void setMaxDateUp(Date maxDateUp) {
-        this.maxDateUp = maxDateUp;
+    public boolean isBrowserMobProxy() {
+        return browserMobProxy != null;
     }
 }

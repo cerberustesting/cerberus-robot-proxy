@@ -119,16 +119,16 @@ public class MyBrowserMobProxyService {
     /**
      * Get Har for a specific Proxy defined with an uuid
      *
-     * @param uuid uuid of the Proxy
+     * @param msp
      * @param requestUrlPattern Request URL to filter
      * @param emptyResponseContentText Boolean that activate the cleaning of the
      * Response Content Text
      * @return
      */
-    public Har getHar(String uuid, String requestUrlPattern, boolean emptyResponseContentText) {
+    public Har getHar(MySessionProxies msp, String requestUrlPattern, boolean emptyResponseContentText) {
 
         Har response;
-        BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
+        BrowserMobProxy proxy = msp.getBrowserMobProxy();
 
         if (!"".equals(requestUrlPattern) || emptyResponseContentText) {
             response = getFilteredHar(proxy.getHar(), requestUrlPattern, emptyResponseContentText);
@@ -196,12 +196,12 @@ public class MyBrowserMobProxyService {
     }
 
     /**
-     * Get Har MD5 to compare files before downloading a new HAR
-     * @param uuid
+     *
+     * @param msp
      * @param requestUrlPattern
-     * @return 
+     * @return
      */
-    public String getHarMD5(String uuid, String requestUrlPattern) {
+    public String getHarMD5(MySessionProxies msp, String requestUrlPattern) {
 
         try {
 
@@ -210,7 +210,7 @@ public class MyBrowserMobProxyService {
 
             // digest() method is called to calculate message digest 
             //  of an input digest() return array of byte 
-            byte[] messageDigest = md.digest(this.getHar(uuid, requestUrlPattern, true).toString().getBytes());
+            byte[] messageDigest = md.digest(this.getHar(msp, requestUrlPattern, true).toString().getBytes());
 
             // Convert byte array into signum representation 
             BigInteger no = new BigInteger(1, messageDigest);
@@ -229,11 +229,11 @@ public class MyBrowserMobProxyService {
     }
 
     /**
-     * Clear HAR
-     * @param uuid
+     *
+     * @param msp
      */
-    public void clearHar(String uuid) {
-        BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
+    public void clearHar(MySessionProxies msp) {
+        BrowserMobProxy proxy = msp.getBrowserMobProxy();
         proxy.newHar();
     }
 
@@ -249,17 +249,19 @@ public class MyBrowserMobProxyService {
             LOG.info("BrowserMobProxy : '" + uuid + "' stopped");
         }
     }
-    
+
+
     /**
-     * Stop Specific proxy
-     * @param uuid 
+     *
+     * @param msp
+     * @return
      */
-    public JSONObject getStats(String uuid) {
+    public JSONObject getStats(MySessionProxies msp) {
         JSONObject response = new JSONObject();
         
         try {
             
-            BrowserMobProxy proxy = mySessionProxiesRepository.getMySessionProxies(uuid).getBrowserMobProxy();
+            BrowserMobProxy proxy = msp.getBrowserMobProxy();
             response.put("hits", proxy.getHar().getLog().getEntries().size());
             
         } catch (JSONException ex) {

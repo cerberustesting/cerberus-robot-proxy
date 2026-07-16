@@ -32,8 +32,6 @@ public class MyProxyController {
 
     @Autowired
     MySessionProxiesService mySessionProxiesService;
-    @Autowired
-    MyBrowserMobProxyService myBrowserMobProxyService;
 
     /**
      * Check server is Up
@@ -108,7 +106,8 @@ public class MyProxyController {
             @RequestParam(value = "bsLocalProxyActive", defaultValue = "${proxy.defaultlocalproxyactive}") boolean bsLocalProxyActive,
             @RequestParam(value = "bsKey", defaultValue = "") String bsKey,
             @RequestParam(value = "bsLocalIdentifier", defaultValue = "") String bsLocalIdentifier,
-            @RequestParam(value = "bsLocalProxyHost", defaultValue = "") String bsLocalProxyHost) {
+            @RequestParam(value = "bsLocalProxyHost", defaultValue = "") String bsLocalProxyHost,
+            @RequestParam(value = "proxyType", defaultValue = "") String proxyType) {
 
         String response;
 
@@ -123,7 +122,7 @@ public class MyProxyController {
             return sb.toString();
         }
 
-        MySessionProxies msp = mySessionProxiesService.start(port, timeout, enableCapture, bsLocalProxyActive, bsKey, bsLocalIdentifier, bsLocalProxyHost);
+        MySessionProxies msp = mySessionProxiesService.start(port, timeout, enableCapture, bsLocalProxyActive, bsKey, bsLocalIdentifier, bsLocalProxyHost, proxyType);
 
         StringBuilder sb = new StringBuilder();
         sb.append("{\"status\":\"Success\",");
@@ -136,43 +135,41 @@ public class MyProxyController {
         sb.append("\"bsLocalProxyActive\":\"" + bsLocalProxyActive + "\",");
         sb.append("\"bsKey\":\"" + bsKey + "\",");
         sb.append("\"bsLocalIdentifier\":\"" + bsLocalIdentifier + "\",");
-        sb.append("\"bsLocalProxyHost\":\"" + bsLocalProxyHost + "\"}");
+        sb.append("\"bsLocalProxyHost\":\"" + bsLocalProxyHost + "\",");
+        sb.append("\"proxyType\":\"" + proxyType + "\"}");
 
         response = sb.toString();
+
+
+        try {
+            mySessionProxiesService.executePostStartScript();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+
 
         return response;
     }
 
-    /**
-     * Get Har
-     *
-     * @param uuid
-     * @param requestUrl
-     * @return
-     * @throws IOException
-     */
+
     @ApiOperation(value = "Get HAR file knowing a specific proxy uuid")
     @RequestMapping(value = "/getHar", method = RequestMethod.GET)
     public String getHar(
-            @RequestParam(value = "uuid", defaultValue = "") String uuid,
+            @RequestParam(value = "uuid") String uuid,
             @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl,
-            @RequestParam(value = "emptyResponseContentText", required = false, defaultValue = "false") boolean emptyResponseContentText) throws IOException {
+            @RequestParam(value = "emptyResponseContentText", defaultValue = "false") boolean emptyResponseContentText) {
 
-        String response = "";
-        LOG.info("Get Har for Proxy : '" + uuid + "'");
+        LOG.info("Get HAR for Proxy UUID '{}'", uuid);
 
-        Har har = myBrowserMobProxyService.getHar(uuid, requestUrl, emptyResponseContentText);
-
-        LOG.info("Har for proxy '" + uuid + "' generated");
-
-        try (StringWriter stringwriter = new StringWriter()) {
-            har.writeTo(stringwriter);
-            response = stringwriter.toString();
+        try {
+            return mySessionProxiesService.getHar(uuid, requestUrl, emptyResponseContentText);
         } catch (Exception ex) {
-            LOG.warn("Error generating har for proxy '" + uuid + "' : " + ex);
+            LOG.error("Error getting HAR for proxy '{}'", uuid, ex);
+            return "{}";
         }
-
-        return response;
     }
 
     @RequestMapping(value = "/getHarMD5", method = RequestMethod.GET)
@@ -182,7 +179,7 @@ public class MyProxyController {
         String response;
         LOG.info("Get Har MD5 for Proxy '" + uuid + "'");
 
-        response = myBrowserMobProxyService.getHarMD5(uuid, requestUrl);
+        response = mySessionProxiesService.getHarMD5(uuid, requestUrl);
 
         LOG.info("Har MD5 for proxy '" + uuid + "' : " + response);
 
@@ -194,7 +191,7 @@ public class MyProxyController {
 
         String response = "";
 
-        myBrowserMobProxyService.clearHar(uuid);
+        mySessionProxiesService.clearHar(uuid);
 
         response = "Har cleared, new Har generated";
 
@@ -240,7 +237,7 @@ public class MyProxyController {
 
         String response = "";
 
-        JSONObject hits = myBrowserMobProxyService.getStats(uuid);
+        JSONObject hits = mySessionProxiesService.getStats(uuid);
         response = hits.toString();
 
         return response;
@@ -256,16 +253,7 @@ public class MyProxyController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
-        String commonName = body.get("commonName");
-        String organization = body.get("organization");
-        Map<String, Date> dates = myBrowserMobProxyService.formatDates(body.get("notBeforeDate"), body.get("notAfterDate"));
-        String password = body.get("password");
-
-        CertificateInfo certificateInfo = myBrowserMobProxyService.generateCertificateInfo(commonName, organization, dates.get("notBeforeDate"), dates.get("notAfterDate"));
-
-        myBrowserMobProxyService.createCertificateFiles(certificateInfo, password);
-
-        ByteArrayOutputStream byteArrayOutputStream = myBrowserMobProxyService.createZip();
+        ByteArrayOutputStream byteArrayOutputStream = mySessionProxiesService.byteArrayOutputStream(body);
 
         return ResponseEntity
                 .ok()
