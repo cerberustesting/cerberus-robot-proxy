@@ -62,6 +62,22 @@ public class MyMITMProxyService {
         pb.redirectErrorStream(true);
         Process process = pb.start();
 
+        // Drain stdout/stderr continuously: mitmdump logs every intercepted
+        // request, and an unread pipe fills up its OS buffer, which makes
+        // the mitmdump process block on write() and freeze all traffic.
+        Thread logDrain = new Thread(() -> {
+            try (BufferedReader reader =
+                         new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    LOG.debug("[mitmdump] {}", line);
+                }
+            } catch (IOException ignored) {
+            }
+        });
+        logDrain.setDaemon(true);
+        logDrain.start();
+
         return process;
     }
 
