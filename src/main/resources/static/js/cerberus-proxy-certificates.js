@@ -1,67 +1,62 @@
-$(document).ready(function () {
-    $("#notBeforeDate").val(new Date().toISOString().split('T')[0]);
-    $("#notAfterDate").val(new Date(new Date().getTime()+(730*24*60*60*1000)).toISOString().split('T')[0]);
-    $('#generateCertsButton').click(function()
-        {
-            generateCerts();
-        }
-    );
+document.addEventListener('DOMContentLoaded', function () {
+    el("notBeforeDate").value = new Date().toISOString().split('T')[0];
+    el("notAfterDate").value = new Date(new Date().getTime() + (730 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    el("generateCertsButton").addEventListener('click', function () {
+        generateCerts();
+    });
 });
 
 function generateCerts() {
     //Avoid to call when the password is empty
-    if ($("#password").val() == "") {
+    if (el("password").value === "") {
         return false;
     }
-    $.ajax
-    ({
-        url: "certs/generate",
-        async: true,
+
+    console.info("Request for generating certificates sent to the server.");
+    hideErrorMessage();
+    showLoadingMessage();
+
+    fetch("certs/generate", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        data: JSON.stringify({
-            commonName: encodeURIComponent($("#commonName").val()),
-            organization: encodeURIComponent($("#organization").val()),
-            notBeforeDate: encodeURIComponent(new Date($('#notBeforeDate').val()).toISOString()),
-            notAfterDate: encodeURIComponent(new Date($('#notAfterDate').val()).toISOString()),
-            password: encodeURIComponent($('#password').val())
-        }),
-        beforeSend: function() {
-            console.info("Request for generating certificates sent to the server.");
-            hideErrorMessage();
-            showLoadingMessage();
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            console.error("An error occurred during generation of certificates " + errorThrown);
-            hideLoadingMessage();
-            showErrorMessage();
-        },
-        success: function(data) {
-            downloadZip(data);
-            hideLoadingMessage();
-        },
-        xhrFields: {
-            responseType: 'blob'
+        body: JSON.stringify({
+            commonName: encodeURIComponent(el("commonName").value),
+            organization: encodeURIComponent(el("organization").value),
+            notBeforeDate: encodeURIComponent(new Date(el("notBeforeDate").value).toISOString()),
+            notAfterDate: encodeURIComponent(new Date(el("notAfterDate").value).toISOString()),
+            password: encodeURIComponent(el("password").value)
+        })
+    }).then(function (response) {
+        if (!response.ok) {
+            throw new Error("Request failed (" + response.status + ")");
         }
+        return response.blob();
+    }).then(function (data) {
+        downloadZip(data);
+        hideLoadingMessage();
+    }).catch(function (error) {
+        console.error("An error occurred during generation of certificates " + error);
+        hideLoadingMessage();
+        showErrorMessage();
     });
 }
 
 function showLoadingMessage() {
-    $("#loadingMessage").css("display", "flex");
+    el("loadingMessage").style.display = "flex";
 }
 
 function hideLoadingMessage() {
-    $("#loadingMessage").css("display", "none");
+    el("loadingMessage").style.display = "none";
 }
 
 function showErrorMessage() {
-    $("#errorMessage").css("display", "flex");
+    el("errorMessage").style.display = "flex";
 }
 
 function hideErrorMessage() {
-    $("#errorMessage").css("display", "none");
+    el("errorMessage").style.display = "none";
 }
 function downloadZip(data) {
     const blob = new Blob([data], { type: 'application/zip' });

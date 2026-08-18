@@ -10,19 +10,25 @@ import org.apache.logging.log4j.Logger;
 import org.cerberus.robot.proxy.repository.MySessionProxiesRepository;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
+import java.net.ServerSocket;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -38,13 +44,36 @@ public class MyMITMProxyService {
     MySessionProxiesRepository mySessionProxiesRepository;
 
     /**
+     * Directory, mounted and shared with the mitmproxy container, where
+     * real-time JSONL traffic logs are written. Empty disables the feature.
+     */
+    @Value("${mitmproxy.traffic-log-dir:}")
+    private String trafficLogDir;
+
+    /**
+     * Handle to a started mitmdump process and the port its embedded
+     * TrafficControl REST API (getHar/getStats/reset) is bound to.
+     */
+    public static class MitmProxyHandle {
+        public final Process process;
+        public final int apiPort;
+
+        public MitmProxyHandle(Process process, int apiPort) {
+            this.process = process;
+            this.apiPort = apiPort;
+        }
+    }
+
+    /**
      * Start Proxy on specific Port. If port = 0, a random free port will be
      * used
      *
      * @param port
+     * @param enableCapture
+     * @param uuid session identifier, used to name the real-time JSONL traffic log file
      * @return BrowserMobProxy
      */
-    public Process startProxy(int port, boolean enableCapture) throws IOException {
+    public MitmProxyHandle startProxy(int port, boolean enableCapture, UUID uuid) throws IOException {
 
         Path script = Files.createTempFile("traffic_control", ".py");
 
@@ -52,12 +81,27 @@ public class MyMITMProxyService {
             Files.copy(is, script, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        ProcessBuilder pb = new ProcessBuilder(
+        // Each session's embedded TrafficControl REST API (getHar/getStats/reset) needs its
+        // own port: mitmdump runs as a plain sibling process on this host, so a hardcoded port
+        // would make every session but the first fail to bind it, silently returning empty HARs.
+        int apiPort = findFreePort();
+
+        List<String> command = new ArrayList<>(List.of(
                 "mitmdump",
                 "--listen-port", String.valueOf(port),
                 "-s", script.toAbsolutePath().toString(),
-                "--set", "block_global=false"
-        );
+                "--set", "block_global=false",
+                "--set", "api_port=" + apiPort
+        ));
+
+        if (trafficLogDir != null && !trafficLogDir.isBlank()) {
+            command.add("--set");
+            command.add("traffic_log_dir=" + trafficLogDir);
+            command.add("--set");
+            command.add("session_uuid=" + uuid);
+        }
+
+        ProcessBuilder pb = new ProcessBuilder(command);
 
         pb.redirectErrorStream(true);
         Process process = pb.start();
@@ -78,7 +122,27 @@ public class MyMITMProxyService {
         logDrain.setDaemon(true);
         logDrain.start();
 
-        return process;
+        return new MitmProxyHandle(process, apiPort);
+    }
+
+    private static int findFreePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
+    /**
+     * Path of the real-time JSONL traffic log file for a given session, or
+     * {@code null} if real-time traffic logging is not configured
+     * (mitmproxy.traffic-log-dir is empty).
+     *
+     * @param uuid
+     */
+    public Path getTrafficLogFile(UUID uuid) {
+        if (trafficLogDir == null || trafficLogDir.isBlank()) {
+            return null;
+        }
+        return Paths.get(trafficLogDir, uuid + ".jsonl");
     }
 
     /**
@@ -98,6 +162,15 @@ public class MyMITMProxyService {
                 p.destroyForcibly();
             }
         }
+
+        Path trafficLogFile = msp.getTrafficLogFile();
+        if (trafficLogFile != null) {
+            try {
+                Files.deleteIfExists(trafficLogFile);
+            } catch (IOException e) {
+                LOG.warn("Failed to delete traffic log file {}", trafficLogFile, e);
+            }
+        }
     }
 
     /**
@@ -112,7 +185,7 @@ public class MyMITMProxyService {
                       boolean emptyResponseContentText) {
 
         try {
-            int apiPort = msp.getMitmApiPort(); // ex: 9999
+            int apiPort = msp.getMitmApiPort();
             String mode = emptyResponseContentText ? "noresponse" : "full";
 
             StringBuilder url = new StringBuilder(
@@ -218,7 +291,7 @@ public class MyMITMProxyService {
         JSONObject response = new JSONObject();
 
         try {
-            int apiPort = msp.getMitmApiPort(); // ex: 9999
+            int apiPort = msp.getMitmApiPort();
 
             String url = "http://localhost:" + apiPort + "/stats";
 

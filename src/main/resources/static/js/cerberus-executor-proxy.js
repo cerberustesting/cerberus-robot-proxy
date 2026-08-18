@@ -1,118 +1,56 @@
-/* 
+/*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
 function loadProxyList() {
-    $.ajax({url: "getProxyList",
-        async: false,
-        dataType: 'json',
-        success: function (data) {
-            for (var i in data)
-            {
-                generateLogDiv(data[i]);
-            }
-        }
+    getJSON("getProxyList").then(function (data) {
+        data.forEach(function (session) {
+            addSession(session, true);
+        });
     });
 }
 
-function generateLogDiv(data) {
-
-    $("#myProxy").append('<div class="col-md-6" id="container_' + data.uuid + '"><div class="card-header"><h6 class="my-0 font-weight-normal">Proxy '
-            + data.uuid + ' started on port ' + data.port + '<br/>\n\
-    <span onclick="getHar(\'' + data.uuid + '\')" class="badge badge-dark">/getHar</span>  \n\
-    <span onclick="getStats(\'' + data.uuid + '\')" class="badge badge-dark">/getStats</span>  \n\
-    <span onclick="clearHar(\'' + data.uuid + '\')" class="badge badge-dark">/clearHar</span>  \n\
-    <span onclick="stopProxy(\'' + data.uuid + '\')" class="badge badge-dark">/stopProxy</span>\n\
-    <div id="loader_' + data.uuid + '"></div></h6></div><div><pre id="' + data.uuid + '"></pre></div></div>');
-    $("#" + data.uuid).attr("class", "prettyprint");
-    $("#" + data.uuid).attr("style", "max-height:300px");
-    $("#" + data.uuid).append("\n");
-    $("#" + data.uuid).append(new Date($.now()));
-    $("#" + data.uuid).append("   *** Proxy ");
-    $("#" + data.uuid).append(data.uuid);
-    $("#" + data.uuid).append(" started ***   ");
-    $("#" + data.uuid).removeClass('prettyprinted');
-    PR.prettyPrint();
+function addSession(data, backfill) {
+    Alpine.store('app').sessions.push({
+        uuid: data.uuid,
+        port: data.port,
+        proxyType: data.proxyType,
+        backfill: !!backfill
+    });
+    if (data.proxyType === "mitmproxy") {
+        subscribeTraffic(data.uuid);
+    }
 }
 
-
+function removeSession(uuid) {
+    var store = Alpine.store('app');
+    store.sessions = store.sessions.filter(function (session) {
+        return session.uuid !== uuid;
+    });
+    if (store.tab === uuid) {
+        store.tab = 'proxy';
+    }
+    if (window.harViewers) {
+        delete window.harViewers[uuid];
+    }
+}
 
 function startProxy() {
-    $.ajax({url: "startProxy",
-        async: false,
-        dataType: 'json',
-        success: function (data) {
-            generateLogDiv(data);
-        }
-    });
-}
-
-function getHar(uuid) {
-    $.ajax({url: "getHar?uuid=" + uuid + "&emptyResponseContentText=true",
-        async: false,
-        dataType: 'json',
-        success: function (data) {
-            $("#" + uuid).append("\n");
-            $("#" + uuid).append(new Date($.now()));
-            $("#" + uuid).append("   *** Get Har for Proxy ");
-            $("#" + uuid).append(uuid);
-            $("#" + uuid).append(" ***");
-            $("#" + uuid).append("\n");
-            $("#" + uuid).append(JSON.stringify(data, null, '\t'));
-            $("#" + uuid).append("\n");
-            $("#" + uuid).removeClass('prettyprinted');
-            PR.prettyPrint();
-        }
-    });
-}
-
-function getStats(uuid) {
-    $.ajax({url: "getStats?uuid=" + uuid,
-        async: false,
-        dataType: 'json',
-        success: function (data) {
-            $("#" + uuid).append("\n");
-            $("#" + uuid).append(new Date($.now()));
-            $("#" + uuid).append("   *** Get Stats for Proxy ");
-            $("#" + uuid).append(uuid);
-            $("#" + uuid).append(" ***");
-            $("#" + uuid).append("\n");
-            $("#" + uuid).append(JSON.stringify(data, null, '\t'));
-            $("#" + uuid).append("\n");
-            $("#" + uuid).removeClass('prettyprinted');
-            PR.prettyPrint();
-        }
-    });
-}
-
-function clearHar(uuid) {
-    $.ajax({url: "clearHar?uuid=" + uuid,
-        async: false,
-        dataType: 'json',
-        success: function (data) {
-            $("#" + uuid).append("\n");
-            $("#" + uuid).append(new Date($.now()));
-            $("#" + uuid).append("   *** Clear HAR for Proxy ");
-            $("#" + uuid).append(uuid);
-            $("#" + uuid).append(" ***");
-            $("#" + uuid).append("\n");
-            $("#" + uuid).append(JSON.stringify(data, null, '\t'));
-            $("#" + uuid).append("\n");
-            $("#" + uuid).removeClass('prettyprinted');
-            PR.prettyPrint();
-        }
+    var url = "startProxy?proxyType=" + el("proxyType").value;
+    var port = el("proxyPort").value;
+    if (port) {
+        url += "&port=" + encodeURIComponent(port);
+    }
+    getJSON(url).then(function (data) {
+        addSession(data);
+        Alpine.store('app').tab = data.uuid;
     });
 }
 
 function stopProxy(uuid) {
-    showLoader(uuid);
-    $.ajax({url: "stopProxy?uuid=" + uuid,
-        async: false,
-        dataType: 'json',
-        success: function (data) {
-            console.log("success");
-            $("#container_" + uuid).remove();
-        }
+    return getJSON("stopProxy?uuid=" + uuid).then(function () {
+        unsubscribeTraffic(uuid);
+        removeSession(uuid);
     });
 }

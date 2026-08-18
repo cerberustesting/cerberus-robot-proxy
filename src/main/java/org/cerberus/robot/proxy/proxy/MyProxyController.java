@@ -211,6 +211,7 @@ public class MyProxyController {
 
                 jo.put("uuid", msp.getUuid().toString());
                 jo.put("port", msp.getPort());
+                jo.put("proxyType", msp.isMitmproxy() ? MySessionProxies.PROXY_TYPE_MITMPROXY : MySessionProxies.PROXY_TYPE_BROWSERMOB);
                 ja.put(jo);
             }
         } catch (JSONException ex) {

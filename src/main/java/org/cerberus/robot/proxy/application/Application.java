@@ -14,7 +14,6 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"org.cerberus.robot.proxy.application",
-    "org.cerberus.robot.proxy.screenrecorder",
     "org.cerberus.robot.proxy.repository",
     "org.cerberus.robot.proxy.proxy"})
 @EnableScheduling

@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Path;
 import java.util.Date;
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ public class MySessionProxies {
     private BrowserMobProxy browserMobProxy;
     private Process mitmProcess;
     private Integer mitmApiPort;
+    private Path trafficLogFile;
     private Local browserStackLocal;
     private Date maxDateUp;
     private String endDateMessage;

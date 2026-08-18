@@ -9,17 +9,16 @@ and open the template in the editor.
         <title>Cerberus Robot Proxy</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="webjars/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>[x-cloak] { display: none !important; }</style>
         <link href="webjars/google-code-prettify/1.0.5/bin/prettify.min.css" rel="stylesheet">
-        <script src="webjars/jquery/3.4.1/jquery.min.js"></script>
-        <script src="webjars/bootstrap/4.3.1/js/bootstrap.min.js"></script>
         <script src="webjars/google-code-prettify/1.0.5/bin/prettify.min.js"></script>
         <script src="webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
         <script src="webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
         <script src="js/cerberus-executor.js"></script>
+        <script src="js/cerberus-session-panel.js"></script>
         <script src="js/cerberus-executor-proxy.js"></script>
         <script src="js/cerberus-proxy-certificates.js"></script>
-        <script src="js/cerberus-executor-screenrecorder.js"></script>
         <script src="js/websocket.js"></script>
         <script src="js/sockjs-0.3.4.js"></script>
         <script src="js/stomp.js"></script>
@@ -27,146 +26,208 @@ and open the template in the editor.
         <link href="css/loader.css" rel="stylesheet">
         <link rel="icon" type="image/png" href="img/favicon.ico.png">
         <script src="https://unpkg.com/ionicons@5.1.2/dist/ionicons.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.3/Chart.bundle.min.js"></script>
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script> 
-      
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     </head>
-    <body>
-        <div class="sidebar-nav navbar" style="background-color: #333;color:white">
-            <h2><img id="logo" alt="Cerberus" style="width:50px; weight:50px" src="img/Logo-cerberus_menu.png"/> Cerberus Robot Proxy</h2>
+    <body class="bg-gray-100 text-gray-800">
+        <div class="bg-gray-800 text-white px-4 py-3 flex items-center gap-2">
+            <img id="logo" alt="Cerberus" class="w-10 h-10" src="img/Logo-cerberus_menu.png"/>
+            <h2 class="text-lg font-semibold">Cerberus Robot Proxy</h2>
         </div>
-        <h5 class="page-title-line" id="title">Cerberus Robot Proxy is up and running...</h5>
-        <div class="card">
-            <div class="card-title">
+        <h5 class="text-sm text-gray-500 px-4 py-2" id="title">Cerberus Robot Proxy is up and running...</h5>
+
+        <div class="mx-4 mb-4 bg-white rounded-lg shadow-sm border border-gray-200" x-data="{}">
+            <div class="flex items-center gap-2 px-4 py-3 text-base font-semibold text-gray-800 border-b border-gray-200">
                 <ion-icon name="apps"></ion-icon>
                 List of services available
             </div>
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="proxy-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true" href="#tabProxy">Proxy</a>
-                    </li>
-<!--                    <li class="nav-item">
-                        <a class="nav-link" id="performance-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabPerformances">Speed Index</a>
-                    </li>-->
-                    <li>
-                        <a class="nav-link" id="documentation-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabDocumentation">Documentation</a>
-                    </li>
-                    <li>
-                        <a class="nav-link" id="certificate-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabCertificate">Certificate</a>
-                    </li>
-                    <!--                    <li>
-                                            <a class="nav-link" id="command-tab" data-toggle="tab" role="tab" aria-controls="home" aria-selected="true"  href="#tabCommand">Command</a>
-                                        </li>-->
-                </ul>
+            <div class="border-b border-gray-200 px-4">
+                <nav class="flex gap-4 flex-wrap" role="tablist">
+                    <button type="button" role="tab" @click="$store.app.tab = 'proxy'"
+                            class="border-b-2 px-1 py-2 text-sm font-medium"
+                            :class="$store.app.tab === 'proxy' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">Proxy</button>
+                    <button type="button" role="tab" @click="$store.app.tab = 'documentation'"
+                            class="border-b-2 px-1 py-2 text-sm font-medium"
+                            :class="$store.app.tab === 'documentation' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">Documentation</button>
+                    <button type="button" role="tab" @click="$store.app.tab = 'certificate'"
+                            class="border-b-2 px-1 py-2 text-sm font-medium"
+                            :class="$store.app.tab === 'certificate' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">Certificate</button>
+                    <template x-for="session in $store.app.sessions" :key="session.uuid">
+                        <button type="button" role="tab" @click="$store.app.tab = session.uuid"
+                                class="border-b-2 px-1 py-2 text-sm font-medium"
+                                :class="$store.app.tab === session.uuid ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                x-text="session.proxyType + ' :' + session.port"></button>
+                    </template>
+                </nav>
             </div>
-            <div class="card-body tab-content" id="myTabContent">
-                <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="proxy-tab" id="tabProxy">
-                    <p> <button class="btn btn-primary" onclick="startProxy()"><ion-icon name="play"></ion-icon> Start Proxy on random port</button></p>
-                    <div class="row" id="myProxy"></div>
+            <div class="p-4">
+                <div role="tabpanel" id="tabProxy" x-show="$store.app.tab === 'proxy'">
+                    <p class="flex items-end gap-3 mb-4 flex-wrap">
+                        <span class="flex flex-col gap-1">
+                            <label for="proxyType" class="text-xs font-medium text-gray-600">Proxy type</label>
+                            <select id="proxyType" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="browsermob" selected>browsermob</option>
+                                <option value="mitmproxy">mitmproxy</option>
+                            </select>
+                        </span>
+                        <span class="flex flex-col gap-1">
+                            <label for="proxyPort" class="text-xs font-medium text-gray-600">Port</label>
+                            <input type="number" min="0" id="proxyPort" placeholder="0 = random" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </span>
+                        <button class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-md transition-colors" onclick="startProxy()">
+                            <ion-icon name="play"></ion-icon> Start Proxy
+                        </button>
+                    </p>
+                    <p class="text-sm text-gray-500" x-show="$store.app.sessions.length === 0">No proxy session running. Started sessions appear as tabs next to "Certificate".</p>
                 </div>
-                <div class="tab-pane fade" role="tabpanel" aria-labelledby="video-tab" id="tabVideo">
-                    <div id="responsePicture" class="row"></div>
-                    <h5 class="page-title-line">Last Sessions :</h5>
-                    <div class="row">
-                        <div class="col-lg-6 overflow-auto" style="height:480px">
-                            <ul id="conversationDiv"></ul>
+                <template x-for="session in $store.app.sessions" :key="session.uuid">
+                    <div role="tabpanel" x-show="$store.app.tab === session.uuid" x-data="sessionPanel(session)">
+                        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                            <h6 class="font-normal text-sm">
+                                Proxy <span x-text="session.uuid"></span> (<span x-text="session.proxyType"></span>) on port <span x-text="session.port"></span>
+                            </h6>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span @click="openHarModal()" class="inline-flex items-center bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium px-2 py-1 rounded cursor-pointer">/getHar</span>
+                                <span @click="openStatsModal()" class="inline-flex items-center bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium px-2 py-1 rounded cursor-pointer">/getStats</span>
+                                <span @click="clearHar()" class="inline-flex items-center bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium px-2 py-1 rounded cursor-pointer">/clearHar</span>
+                                <span @click="stop()" class="inline-flex items-center bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-2 py-1 rounded cursor-pointer">/stopProxy</span>
+                            </div>
                         </div>
-                        <div class="col-lg-6" id="lastSessionVideo"></div>
+
+                        <div class="flex gap-3 flex-wrap">
+                            <div class="w-full lg:w-2/3 border border-gray-200 rounded-md flex flex-col">
+                                <div class="p-2 flex gap-2 items-center border-b border-gray-200">
+                                    <input x-model="filter" placeholder="Filter URL..." class="flex-1 border border-gray-300 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <select x-model="statusFilter" class="border border-gray-300 rounded-md px-2 py-1 text-xs">
+                                        <option value="all">All</option>
+                                        <option value="2xx">2xx</option>
+                                        <option value="4xx">4xx</option>
+                                        <option value="5xx">5xx</option>
+                                    </select>
+                                    <select x-model="sortBy" class="border border-gray-300 rounded-md px-2 py-1 text-xs">
+                                        <option value="time">Time</option>
+                                        <option value="status">Status</option>
+                                        <option value="size">Size</option>
+                                    </select>
+                                </div>
+                                <div class="overflow-auto" style="max-height:450px">
+                                    <table class="w-full text-xs">
+                                        <thead class="sticky top-0 bg-gray-50">
+                                            <tr>
+                                                <th class="px-2 py-2 text-left">Method</th>
+                                                <th class="px-2 py-2 text-left">URL</th>
+                                                <th class="px-2 py-2">Status</th>
+                                                <th class="px-2 py-2">Time</th>
+                                                <th class="px-2 py-2">Size</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="entry in filteredEntries" :key="entry._id">
+                                                <tr @click="select(entry)" :class="selected === entry ? 'bg-sky-100' : 'hover:bg-gray-100'" class="h-8 cursor-pointer border-b border-gray-200">
+                                                    <td x-text="entry.request.method" class="px-2 py-1"></td>
+                                                    <td x-text="entry.request.url" class="px-2 py-1 truncate max-w-[280px]"></td>
+                                                    <td class="px-2 py-1 text-center">
+                                                        <span x-text="entry.response ? entry.response.status : '-'" :class="statusClass(entry.response ? entry.response.status : 0)" class="px-2 py-0.5 rounded text-[10px]"></span>
+                                                    </td>
+                                                    <td x-text="entry.time + ' ms'" class="px-2 py-1 text-center"></td>
+                                                    <td x-text="(entry.response ? entry.response.content.size : 0) + ' B'" class="px-2 py-1 text-center"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="w-full lg:w-1/3 border border-gray-200 rounded-md p-2 overflow-auto" style="max-height:490px">
+                                <template x-if="!selected"><p class="text-xs text-gray-500">Select a request</p></template>
+                                <template x-if="selected">
+                                    <div>
+                                        <h6 class="text-xs font-bold mb-1">Request</h6>
+                                        <div x-html="highlightJson(selected.request)" class="font-mono text-[11px] whitespace-pre-wrap bg-gray-900 text-white p-2 rounded mb-3 overflow-auto"></div>
+                                        <h6 class="text-xs font-bold mb-1">Response</h6>
+                                        <div x-html="highlightJson(selected.response)" class="font-mono text-[11px] whitespace-pre-wrap bg-gray-900 text-white p-2 rounded overflow-auto"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div x-show="modalOpen" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="closeModal()">
+                            <div class="bg-white rounded-md shadow-lg w-full max-w-3xl max-h-[80vh] flex flex-col mx-4">
+                                <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200">
+                                    <h6 class="text-sm font-semibold" x-text="modalTitle"></h6>
+                                    <button @click="closeModal()" class="text-gray-500 hover:text-gray-800 text-sm">&#10005;</button>
+                                </div>
+                                <div class="p-3 overflow-auto">
+                                    <div x-html="modalContent" class="font-mono text-[11px] whitespace-pre-wrap bg-gray-900 text-white p-2 rounded"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <br><br>
-                    <h5 class="page-title-line">VNC Manual Connection :</h5>
-                    <form onsubmit="startRecording()" role="form">
-                        <div class="form-row">
-                            <div class="col-md-2 mb-3">
-                                <label for="vncHost">VNC Host</label>
-                                <input type="text" class="form-control" id="vncHost" name="vncHost" required>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="vncPort">VNC Port</label>
-                                <input type="text" class="form-control" id="vncPort" name="vncPort" required>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="vncPassword">VNC Password</label>
-                                <input type="text" class="form-control" id="vncPassword" name="vncPassword" required>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="tab-pane fade" role="tabpanel" aria-labelledby="performance-tab" id="tabPerformances">
-                    <input id="speedIndexUrl" placeholder="URL"><button onclick="getSpeedIndex()">Get Speed Index</button>
-                    <pre class="prettyprint" style="min-height:200px; height:400px; overflow: auto"><code id="speedIndexResult" class="lang-js"></code></pre>
-                </div>
-                <div class="tab-pane fade" role="tabpanel" aria-labelledby="documentation-tab" id="tabDocumentation">
-                    <h5 class="page-title-line">API Documentation :</h5>
-                    <a href="./swagger-ui.html">Swagger</a>
-                    <br><hr/><br>
-                    <h5 class="page-title-line">Proxy :</h5>
-                    <div class="row"><ul id="my-proxy-controller" class="col-lg-6 list-group"></ul>
-                        <div class="col-lg-6">
-                            <figure class="figure">
-                                <img id="workflowProxy" src="img/workflowProxy.png" class="figure-img img-fluid rounded" width="640" height="480" >
-                                <figcaption class="figure-caption">Proxy Sequence Diagram</figcaption>
-                            </figure>
-                        </div>
+                </template>
+                <div role="tabpanel" id="tabDocumentation" x-show="$store.app.tab === 'documentation'">
+                    <h5 class="text-sm font-semibold text-gray-600 mb-2">API Documentation :</h5>
+                    <a href="./swagger-ui.html" class="text-blue-600 hover:underline">Swagger</a>
+                    <hr class="my-4 border-gray-200">
+                    <h5 class="text-sm font-semibold text-gray-600 mb-2">Proxy :</h5>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <ul id="my-proxy-controller" class="divide-y divide-gray-200 border border-gray-200 rounded-md self-start"></ul>
+                        <figure>
+                            <img id="workflowProxy" src="img/workflowProxy.png" class="max-w-full h-auto rounded-md" width="640" height="480">
+                            <figcaption class="text-sm text-gray-500 mt-1">Proxy Sequence Diagram</figcaption>
+                        </figure>
                     </div>
-                    <br><hr/><br>
+                    <hr class="my-4 border-gray-200">
                 </div>
-                <div class="tab-pane fade" role="tabpanel" aria-labelledby="certificate-tab" id="tabCertificate">
-                    <p>You can generate here a certificate (ca-certificate-rsa.cer) with associate private key (ca-key-rsa.pem). You can install this certificate in the devices that uses the proxy.</p>
-                    <p>A keystore file (ca-keystore-rsa.p12) is also generated. This file needs to be exported on the machine where the Cerberus proxy is running.</p>
-                    <p>You can overwrite certificate attributes by filling this form. Only password and dates are mandatory. If CommonName and Organization are leaved empty, the default value will be used.</p>
-                    <p>Generated certificate, key and keystore are placed in cerberus-robot-proxy jar folder and downloaded on your browser.</p>
-                    <br />
-                    <p>After certificates files are generated, you need to restart the proxy and put the absolute path of the keystore and the password in CLI arguments, by this way:</p>
-                    <p>
+                <div role="tabpanel" id="tabCertificate" x-show="$store.app.tab === 'certificate'">
+                    <p class="mb-2">You can generate here a certificate (ca-certificate-rsa.cer) with associate private key (ca-key-rsa.pem). You can install this certificate in the devices that uses the proxy.</p>
+                    <p class="mb-2">A keystore file (ca-keystore-rsa.p12) is also generated. This file needs to be exported on the machine where the Cerberus proxy is running.</p>
+                    <p class="mb-2">You can overwrite certificate attributes by filling this form. Only password and dates are mandatory. If CommonName and Organization are leaved empty, the default value will be used.</p>
+                    <p class="mb-4">Generated certificate, key and keystore are placed in cerberus-robot-proxy jar folder and downloaded on your browser.</p>
+                    <p class="mb-2">After certificates files are generated, you need to restart the proxy and put the absolute path of the keystore and the password in CLI arguments, by this way:</p>
+                    <p class="mb-4">
                         <code style="background-color: #eee; border-radius: 3px; font-family: courier, monospace; padding: 0 3px;">
                             java -jar -DkeystorePath="&#60;aboslute_keystore_path&#62;" -DkeystorePassword="&#60;password&#62;" &#60;jar_file&#62;
                         </code>
                     </p>
-                    <hr>
+                    <hr class="my-4 border-gray-200">
                     <form onsubmit="return false;">
-                        <div class="form-row">
-                            <div class="col-md-2 mb-3">
-                                <label for="commonName">Common name</label>
-                                <input type="text" class="form-control" id="commonName" name="commonName">
-                                <span style="font-size: 11px; display: block;">Default: CA dynamically generated by LittleProxy</span>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="organization">Organization</label>
-                                <input type="text" class="form-control" id="organization" name="organization">
-                                <span style="font-size: 11px; display: block;">Default: Generated CA %proxy_hostname% %current_date_time%</span>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="password">Password</label>
-                                <input type="password" class="form-control" id="password" name="organization" required>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="notBeforeDate">Not before date</label>
-                                <input type="date" class="form-control" id="notBeforeDate" name="notBeforeDate" required>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="notAfterDate">Not after date</label>
-                                <input type="date" class="form-control" id="notAfterDate" name="notAfterDate" required>
-                            </div>
+                        <div class="flex flex-wrap gap-4">
+                            <span class="flex flex-col gap-1 w-48">
+                                <label for="commonName" class="text-xs font-medium text-gray-600">Common name</label>
+                                <input type="text" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="commonName" name="commonName">
+                                <span class="text-xs text-gray-400">Default: CA dynamically generated by LittleProxy</span>
+                            </span>
+                            <span class="flex flex-col gap-1 w-48">
+                                <label for="organization" class="text-xs font-medium text-gray-600">Organization</label>
+                                <input type="text" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="organization" name="organization">
+                                <span class="text-xs text-gray-400">Default: Generated CA %proxy_hostname% %current_date_time%</span>
+                            </span>
+                            <span class="flex flex-col gap-1 w-48">
+                                <label for="password" class="text-xs font-medium text-gray-600">Password</label>
+                                <input type="password" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="password" name="organization" required>
+                            </span>
+                            <span class="flex flex-col gap-1 w-48">
+                                <label for="notBeforeDate" class="text-xs font-medium text-gray-600">Not before date</label>
+                                <input type="date" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="notBeforeDate" name="notBeforeDate" required>
+                            </span>
+                            <span class="flex flex-col gap-1 w-48">
+                                <label for="notAfterDate" class="text-xs font-medium text-gray-600">Not after date</label>
+                                <input type="date" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="notAfterDate" name="notAfterDate" required>
+                            </span>
                         </div>
-                        <div>
-                            <div style="display: flex; align-items:center;">
-                                <button class="btn btn-primary" id="generateCertsButton" style="margin-right: 8px;">Generate</button>
-                                <div style="display: none;" id="loadingMessage">
-                                    <div class="small-loader" id="loader" style=""></div>
-                                    <div style="margin-left: 22px;">Generating certificates...</div>
-                                </div>
-                                <div style="display: none;" id="errorMessage">
-                                    <div style="margin-left: 22px; color: red;">An error occurred when generating files. See browser and proxy logs for details.</div>
-                                </div>
+                        <div class="mt-4 flex items-center">
+                            <button class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-md mr-2" id="generateCertsButton">Generate</button>
+                            <div class="hidden items-center gap-2" id="loadingMessage">
+                                <div class="small-loader" id="loader"></div>
+                                <div>Generating certificates...</div>
+                            </div>
+                            <div class="hidden" id="errorMessage">
+                                <div class="text-red-600">An error occurred when generating files. See browser and proxy logs for details.</div>
                             </div>
                         </div>
                     </form>
                 </div>
-                <div class="tab-pane fade" role="tabpanel" aria-labelledby="command-tab"  id="tabCommand">
-                    <input id="commandInput">
-                    <button onclick="executeCommand()">Execute Command</button>
+                <div role="tabpanel" id="tabCommand" class="hidden">
+                    <input id="commandInput" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm">
+                    <button onclick="executeCommand()" class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-md">Execute Command</button>
                     <pre id="commandLog"></pre>
                 </div>
             </div>

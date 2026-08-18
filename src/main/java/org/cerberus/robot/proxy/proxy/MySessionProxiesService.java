@@ -6,6 +6,7 @@
 package org.cerberus.robot.proxy.proxy;
 
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,8 @@ public class MySessionProxiesService {
     MyBrowserMobProxyService myBrowserMobProxyService;
     @Autowired
     MyMITMProxyService myMITMProxyService;
+    @Autowired
+    TrafficStreamService trafficStreamService;
     @Autowired
     MyBrowserStackLocalService myBrowserStackLocalService;
     @Autowired
@@ -79,12 +82,18 @@ public class MySessionProxiesService {
 
             if (MySessionProxies.PROXY_TYPE_MITMPROXY.equals(proxyType)) {
                 // ---- MITMPROXY ----
-                Process process = myMITMProxyService.startProxy(port, enableCapture);
-                msp.setMitmProcess(process);
+                MyMITMProxyService.MitmProxyHandle handle = myMITMProxyService.startProxy(port, enableCapture, uuid);
+                msp.setMitmProcess(handle.process);
                 msp.setPort(port);
-                msp.setMitmApiPort(9999);
+                msp.setMitmApiPort(handle.apiPort);
 
                 LOG.info("Mitmproxy '{}' started on port {} until {}", uuid, port, endDateMessage);
+
+                Path trafficLogFile = myMITMProxyService.getTrafficLogFile(uuid);
+                if (trafficLogFile != null) {
+                    msp.setTrafficLogFile(trafficLogFile);
+                    trafficStreamService.startTailing(uuid, trafficLogFile);
+                }
 
             } else {
                 // ----DEFAULT BROWSERMOB ----
@@ -132,6 +141,7 @@ public class MySessionProxiesService {
             // ---- Mitmproxy ----
             if (msp.isMitmproxy()) {
                 LOG.info("Stopping MitmProxy for '{}'", uuid);
+                trafficStreamService.stopTailing(msp.getUuid());
                 myMITMProxyService.stop(msp);
             }
 
