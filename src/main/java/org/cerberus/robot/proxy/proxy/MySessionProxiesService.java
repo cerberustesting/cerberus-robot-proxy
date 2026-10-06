@@ -8,11 +8,10 @@ package org.cerberus.robot.proxy.proxy;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import net.lightbody.bmp.BrowserMobProxy;
-import net.lightbody.bmp.core.har.Har;
-import net.lightbody.bmp.mitm.CertificateInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.cerberus.robot.proxy.repository.MySessionProxiesRepository;
@@ -35,11 +34,10 @@ import com.browserstack.local.Local;
 public class MySessionProxiesService {
 
     private static final Logger LOG = LogManager.getLogger(MySessionProxiesService.class);
+    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{(\\w+)\\}");
 
     @Autowired
     MySessionProxiesRepository mySessionProxiesRepository;
-    @Autowired
-    MyBrowserMobProxyService myBrowserMobProxyService;
     @Autowired
     MyMITMProxyService myMITMProxyService;
     @Autowired
@@ -54,7 +52,7 @@ public class MySessionProxiesService {
      * used
      *
      * @param port
-     * @return BrowserMobProxy
+     * @return the started session
      */
     public MySessionProxies start(int port, int timeout, boolean enableCapture, boolean bsLocalProxyActive, String bsKey, String bsLocalIdentifier, String bsLocalProxyHost,
                                   String proxyType) {
@@ -96,12 +94,7 @@ public class MySessionProxiesService {
                 }
 
             } else {
-                // ----DEFAULT BROWSERMOB ----
-                BrowserMobProxy bmp = myBrowserMobProxyService.startProxy(port, enableCapture);
-                msp.setBrowserMobProxy(bmp);
-                msp.setPort(bmp.getPort());
-
-                LOG.info("BrowserMobProxy '{}' started on port {} until {}", uuid, msp.getPort(), endDateMessage);
+                throw new IllegalArgumentException("Unsupported proxyType '" + proxyType + "': BrowserMob has been removed, only mitmproxy is supported");
             }
 
         //Start BrowserStack proxy
@@ -143,12 +136,6 @@ public class MySessionProxiesService {
                 LOG.info("Stopping MitmProxy for '{}'", uuid);
                 trafficStreamService.stopTailing(msp.getUuid());
                 myMITMProxyService.stop(msp);
-            }
-
-            // ---- BrowserMob ----
-            if (msp.isBrowserMobProxy()) {
-                LOG.info("Stopping BrowserMobProxy for '{}'", uuid);
-                myBrowserMobProxyService.stop(uuid);
             }
 
             // ---- BrowserStack Local ----
@@ -213,12 +200,6 @@ public class MySessionProxiesService {
             return;
         }
 
-        // ---- BrowserMob ----
-        if (msp.isBrowserMobProxy()) {
-            myBrowserMobProxyService.clearHar(msp);
-            return;
-        }
-
         throw new IllegalStateException("Proxy exists but no implementation found for uuid " + uuid);
     }
 
@@ -246,15 +227,6 @@ public class MySessionProxiesService {
             }
         }
 
-        // ---- BrowserMob ----
-        if (msp.isBrowserMobProxy()) {
-            try (StringWriter stringwriter = new StringWriter()) {
-                Har har = myBrowserMobProxyService.getHar(msp, requestUrl, emptyResponseContentText);
-                har.writeTo(stringwriter);
-                return stringwriter.toString();
-            }
-        }
-
         throw new IllegalStateException("Proxy exists but no implementation found for uuid " + uuid);
 
     }
@@ -275,11 +247,6 @@ public class MySessionProxiesService {
         if (msp.isMitmproxy()) {
             // Appel via mitmproxy command API
             return myMITMProxyService.getStats(msp);
-        }
-
-        // ---- BrowserMob ----
-        if (msp.isBrowserMobProxy()) {
-            return myBrowserMobProxyService.getStats(msp);
         }
 
         throw new IllegalStateException("Proxy exists but no implementation found for uuid " + uuid);
@@ -306,44 +273,30 @@ public class MySessionProxiesService {
             return myMITMProxyService.getHarMD5(msp, requestUrlPattern);
         }
 
-        // ---- BrowserMob ----
-        if (msp.isBrowserMobProxy()) {
-            return myBrowserMobProxyService.getHarMD5(msp, requestUrlPattern);
-        }
-
         throw new IllegalStateException("Proxy exists but no implementation found for uuid " + uuid);
 
     }
 
-    public ByteArrayOutputStream byteArrayOutputStream (Map<String, String> body){
-        String commonName = body.get("commonName");
-        String organization = body.get("organization");
-        Map<String, Date> dates = myBrowserMobProxyService.formatDates(body.get("notBeforeDate"), body.get("notAfterDate"));
-        String password = body.get("password");
-
-        CertificateInfo certificateInfo = myBrowserMobProxyService.generateCertificateInfo(commonName, organization, dates.get("notBeforeDate"), dates.get("notAfterDate"));
-
-        myBrowserMobProxyService.createCertificateFiles(certificateInfo, password);
-
-        return myBrowserMobProxyService.createZip();
-    }
-
-
-    public void executePostStartScript() throws IOException, InterruptedException {
+    public void executePostStartScript(String executionUuid) throws IOException, InterruptedException {
 
         if (postStartScriptsProperties.getScripts().isEmpty()) {
             LOG.info("--- No PostStart script configured. Skipping post start ---");
             return;
         }
 
+        Map<String, String> variables = new HashMap<>();
+        variables.put("executionUuid", executionUuid);
+
         LOG.info("--- Post start Scripts : ---");
 
         for (PostStartScriptConfiguration script : postStartScriptsProperties.getScripts()) {
             if (script.isEnabled()) {
                 List<String> fullCommand = new ArrayList<>();
-                fullCommand.add(script.getExecutable());
+                fullCommand.add(substituteVariables(script.getExecutable(), variables));
 
-                fullCommand.addAll(script.getArguments());
+                for (String argument : script.getArguments()) {
+                    fullCommand.add(substituteVariables(argument, variables));
+                }
 
                 LOG.info("Execute script: " + script.getName() + " (command: " + String.join(" ", fullCommand) + ")");
                 this.startProcess(
@@ -356,6 +309,27 @@ public class MySessionProxiesService {
             }
         }
 
+    }
+
+    /**
+     * Replaces {@code ${variableName}} placeholders in the given value with the matching entry from
+     * {@code variables}. Unknown placeholders are left untouched.
+     */
+    private static String substituteVariables(String value, Map<String, String> variables) {
+        if (value == null) {
+            return null;
+        }
+
+        Matcher matcher = VARIABLE_PATTERN.matcher(value);
+        StringBuilder result = new StringBuilder();
+        while (matcher.find()) {
+            String variableName = matcher.group(1);
+            String replacement = variables.get(variableName);
+            matcher.appendReplacement(result, Matcher.quoteReplacement(replacement != null ? replacement : matcher.group()));
+        }
+        matcher.appendTail(result);
+
+        return result.toString();
     }
 
 

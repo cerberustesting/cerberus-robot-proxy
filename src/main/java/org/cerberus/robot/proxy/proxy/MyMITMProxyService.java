@@ -71,7 +71,7 @@ public class MyMITMProxyService {
      * @param port
      * @param enableCapture
      * @param uuid session identifier, used to name the real-time JSONL traffic log file
-     * @return BrowserMobProxy
+     * @return the mitmproxy handle
      */
     public MitmProxyHandle startProxy(int port, boolean enableCapture, UUID uuid) throws IOException {
 

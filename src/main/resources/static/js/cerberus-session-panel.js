@@ -114,8 +114,7 @@ document.addEventListener('alpine:init', function () {
             },
 
             openHarModal() {
-                // Also refreshes the table: for browsermob sessions (no live websocket stream)
-                // this is the only way to populate/refresh it.
+                // Also refreshes the table from /getHar.
                 this.load().then((data) => this.showModal('GET /getHar', data));
             },
 

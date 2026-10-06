@@ -9,14 +9,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
-import net.lightbody.bmp.mitm.CertificateInfo;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import net.lightbody.bmp.core.har.Har;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.cerberus.robot.proxy.version.Infos;
@@ -107,9 +105,19 @@ public class MyProxyController {
             @RequestParam(value = "bsKey", defaultValue = "") String bsKey,
             @RequestParam(value = "bsLocalIdentifier", defaultValue = "") String bsLocalIdentifier,
             @RequestParam(value = "bsLocalProxyHost", defaultValue = "") String bsLocalProxyHost,
-            @RequestParam(value = "proxyType", defaultValue = "") String proxyType) {
+            @RequestParam(value = "proxyType", defaultValue = "") String proxyType,
+            @RequestParam(value = "executionUuid", defaultValue = "") String executionUuid) {
 
         String response;
+
+        // BrowserMob has been removed: mitmproxy is the only engine (default when proxyType is not provided).
+        if (proxyType.isEmpty()) {
+            proxyType = MySessionProxies.PROXY_TYPE_MITMPROXY;
+        }
+        if (!MySessionProxies.PROXY_TYPE_MITMPROXY.equals(proxyType)) {
+            return "{\"status\":\"Error\",\"message\":\"proxyType '" + proxyType.replace("\\", "").replace("\"", "")
+                    + "' is not supported: BrowserMob has been removed, only proxyType=mitmproxy is supported\"}";
+        }
 
         if (bsLocalProxyActive && (bsKey.equals("") || bsLocalIdentifier.equals("") || bsLocalProxyHost.equals(""))) {
             StringBuilder sb = new StringBuilder();
@@ -142,7 +150,7 @@ public class MyProxyController {
 
 
         try {
-            mySessionProxiesService.executePostStartScript();
+            mySessionProxiesService.executePostStartScript(executionUuid);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
@@ -211,7 +219,7 @@ public class MyProxyController {
 
                 jo.put("uuid", msp.getUuid().toString());
                 jo.put("port", msp.getPort());
-                jo.put("proxyType", msp.isMitmproxy() ? MySessionProxies.PROXY_TYPE_MITMPROXY : MySessionProxies.PROXY_TYPE_BROWSERMOB);
+                jo.put("proxyType", msp.isMitmproxy() ? MySessionProxies.PROXY_TYPE_MITMPROXY : "unknown");
                 ja.put(jo);
             }
         } catch (JSONException ex) {
@@ -244,21 +252,4 @@ public class MyProxyController {
         return response;
     }
 
-    @PostMapping(value = "/certs/generate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = "application/zip")
-    public ResponseEntity<byte[]> generateCerts(
-            @RequestBody Map<String, String> body
-    ) {
-        if ((body.get("notBeforeDate") == null || body.get("notBeforeDate").isEmpty())
-                || (body.get("notAfterDate") == null || body.get("notAfterDate").isEmpty())
-                || (body.get("password") == null || body.get("password").isEmpty())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-
-        ByteArrayOutputStream byteArrayOutputStream = mySessionProxiesService.byteArrayOutputStream(body);
-
-        return ResponseEntity
-                .ok()
-                .header("Content-Disposition", "attachment; filename=\"certificate-files.zip\"")
-                .body(byteArrayOutputStream.toByteArray());
-    }
 }

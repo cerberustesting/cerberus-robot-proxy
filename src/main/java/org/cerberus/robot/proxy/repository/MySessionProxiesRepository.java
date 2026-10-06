@@ -8,7 +8,7 @@ package org.cerberus.robot.proxy.repository;
 import org.cerberus.robot.proxy.proxy.MySessionProxies;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 
 /**

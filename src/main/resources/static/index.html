@@ -18,7 +18,6 @@ and open the template in the editor.
         <script src="js/cerberus-executor.js"></script>
         <script src="js/cerberus-session-panel.js"></script>
         <script src="js/cerberus-executor-proxy.js"></script>
-        <script src="js/cerberus-proxy-certificates.js"></script>
         <script src="js/websocket.js"></script>
         <script src="js/sockjs-0.3.4.js"></script>
         <script src="js/stomp.js"></script>
@@ -48,9 +47,6 @@ and open the template in the editor.
                     <button type="button" role="tab" @click="$store.app.tab = 'documentation'"
                             class="border-b-2 px-1 py-2 text-sm font-medium"
                             :class="$store.app.tab === 'documentation' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">Documentation</button>
-                    <button type="button" role="tab" @click="$store.app.tab = 'certificate'"
-                            class="border-b-2 px-1 py-2 text-sm font-medium"
-                            :class="$store.app.tab === 'certificate' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">Certificate</button>
                     <template x-for="session in $store.app.sessions" :key="session.uuid">
                         <button type="button" role="tab" @click="$store.app.tab = session.uuid"
                                 class="border-b-2 px-1 py-2 text-sm font-medium"
@@ -65,8 +61,7 @@ and open the template in the editor.
                         <span class="flex flex-col gap-1">
                             <label for="proxyType" class="text-xs font-medium text-gray-600">Proxy type</label>
                             <select id="proxyType" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="browsermob" selected>browsermob</option>
-                                <option value="mitmproxy">mitmproxy</option>
+                                <option value="mitmproxy" selected>mitmproxy</option>
                             </select>
                         </span>
                         <span class="flex flex-col gap-1">
@@ -77,7 +72,7 @@ and open the template in the editor.
                             <ion-icon name="play"></ion-icon> Start Proxy
                         </button>
                     </p>
-                    <p class="text-sm text-gray-500" x-show="$store.app.sessions.length === 0">No proxy session running. Started sessions appear as tabs next to "Certificate".</p>
+                    <p class="text-sm text-gray-500" x-show="$store.app.sessions.length === 0">No proxy session running. Started sessions appear as tabs next to "Documentation".</p>
                 </div>
                 <template x-for="session in $store.app.sessions" :key="session.uuid">
                     <div role="tabpanel" x-show="$store.app.tab === session.uuid" x-data="sessionPanel(session)">
@@ -175,55 +170,6 @@ and open the template in the editor.
                         </figure>
                     </div>
                     <hr class="my-4 border-gray-200">
-                </div>
-                <div role="tabpanel" id="tabCertificate" x-show="$store.app.tab === 'certificate'">
-                    <p class="mb-2">You can generate here a certificate (ca-certificate-rsa.cer) with associate private key (ca-key-rsa.pem). You can install this certificate in the devices that uses the proxy.</p>
-                    <p class="mb-2">A keystore file (ca-keystore-rsa.p12) is also generated. This file needs to be exported on the machine where the Cerberus proxy is running.</p>
-                    <p class="mb-2">You can overwrite certificate attributes by filling this form. Only password and dates are mandatory. If CommonName and Organization are leaved empty, the default value will be used.</p>
-                    <p class="mb-4">Generated certificate, key and keystore are placed in cerberus-robot-proxy jar folder and downloaded on your browser.</p>
-                    <p class="mb-2">After certificates files are generated, you need to restart the proxy and put the absolute path of the keystore and the password in CLI arguments, by this way:</p>
-                    <p class="mb-4">
-                        <code style="background-color: #eee; border-radius: 3px; font-family: courier, monospace; padding: 0 3px;">
-                            java -jar -DkeystorePath="&#60;aboslute_keystore_path&#62;" -DkeystorePassword="&#60;password&#62;" &#60;jar_file&#62;
-                        </code>
-                    </p>
-                    <hr class="my-4 border-gray-200">
-                    <form onsubmit="return false;">
-                        <div class="flex flex-wrap gap-4">
-                            <span class="flex flex-col gap-1 w-48">
-                                <label for="commonName" class="text-xs font-medium text-gray-600">Common name</label>
-                                <input type="text" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="commonName" name="commonName">
-                                <span class="text-xs text-gray-400">Default: CA dynamically generated by LittleProxy</span>
-                            </span>
-                            <span class="flex flex-col gap-1 w-48">
-                                <label for="organization" class="text-xs font-medium text-gray-600">Organization</label>
-                                <input type="text" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="organization" name="organization">
-                                <span class="text-xs text-gray-400">Default: Generated CA %proxy_hostname% %current_date_time%</span>
-                            </span>
-                            <span class="flex flex-col gap-1 w-48">
-                                <label for="password" class="text-xs font-medium text-gray-600">Password</label>
-                                <input type="password" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="password" name="organization" required>
-                            </span>
-                            <span class="flex flex-col gap-1 w-48">
-                                <label for="notBeforeDate" class="text-xs font-medium text-gray-600">Not before date</label>
-                                <input type="date" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="notBeforeDate" name="notBeforeDate" required>
-                            </span>
-                            <span class="flex flex-col gap-1 w-48">
-                                <label for="notAfterDate" class="text-xs font-medium text-gray-600">Not after date</label>
-                                <input type="date" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm" id="notAfterDate" name="notAfterDate" required>
-                            </span>
-                        </div>
-                        <div class="mt-4 flex items-center">
-                            <button class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5 rounded-md mr-2" id="generateCertsButton">Generate</button>
-                            <div class="hidden items-center gap-2" id="loadingMessage">
-                                <div class="small-loader" id="loader"></div>
-                                <div>Generating certificates...</div>
-                            </div>
-                            <div class="hidden" id="errorMessage">
-                                <div class="text-red-600">An error occurred when generating files. See browser and proxy logs for details.</div>
-                            </div>
-                        </div>
-                    </form>
                 </div>
                 <div role="tabpanel" id="tabCommand" class="hidden">
                     <input id="commandInput" class="border border-gray-300 rounded-md px-2 py-1.5 text-sm">

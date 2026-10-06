@@ -6,7 +6,6 @@
 package org.cerberus.robot.proxy.proxy;
 
 import com.browserstack.local.Local;
-import net.lightbody.bmp.BrowserMobProxy;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -33,11 +32,9 @@ import java.util.UUID;
 public class MySessionProxies {
 
     public static final String PROXY_TYPE_MITMPROXY = "mitmproxy";
-    public static final String PROXY_TYPE_BROWSERMOB = "browsermob";
 
     private UUID uuid;
     private Integer port;
-    private BrowserMobProxy browserMobProxy;
     private Process mitmProcess;
     private Integer mitmApiPort;
     private Path trafficLogFile;
@@ -47,9 +44,5 @@ public class MySessionProxies {
 
     public boolean isMitmproxy() {
         return mitmProcess != null;
-    }
-
-    public boolean isBrowserMobProxy() {
-        return browserMobProxy != null;
     }
 }
