@@ -74,7 +74,7 @@ java -jar cerberus-robot-proxy.jar --relay.token=<long-random-secret>
 
 ### Contract
 
-Both routes require `Authorization: Bearer <relay.token>` (`GET /check` is the unrelated, existing health route).
+Both routes require `Authorization: Bearer <relay.token>`, or the credentials of the configured [authentication mode](#authentication) (`GET /check` is the unrelated, existing health route).
 
 `GET /relay/check` -> `200 {"ok":true,"version":1}`
 
@@ -114,9 +114,72 @@ An enabled relay is, by design, an HTTP proxy into the network of this machine. 
 
 - use a **long random token** and **https only** (the token travels in a header);
 - set `relay.allowed-hosts` to the hosts that Cerberus actually needs;
-- the relay shares the port of the robot-proxy API, whose other routes are not authenticated: expose only `/relay` and `/relay/check` through the tunnel/proxy.
+- the relay shares the port of the robot-proxy API: with `robotproxy.auth.mode=none` its other routes are not authenticated, so either use the `token` or `oauth` [authentication mode](#authentication), or expose only `/relay` and `/relay/check` through the tunnel/proxy.
 
 The relay never logs query strings, headers or the token (only method, origin, path, status and duration).
+
+
+## Authentication
+
+One setting, read at startup, applies to **all** the services (relay, proxy management API, WebSocket): `robotproxy.auth.mode`.
+
+| Mode | Behaviour |
+|---|---|
+| `none` (default) | Nothing is authenticated. The relay keeps its historical rule: disabled (`503`) unless `relay.token` is set, and then it requires it |
+| `token` | Every route requires `Authorization: Bearer <robotproxy.auth.token>` (shared secret). If `robotproxy.auth.token` is empty, `relay.token` is used, so an existing setup only has to switch the mode. The UI shows a **login page** (`/login`) where the token is typed once |
+| `oauth` | Every route requires a Bearer JWT issued by Keycloak (machine-to-machine, `client_credentials` grant), or, if `robotproxy.auth.oauth2.ui.client-id` is set, a browser login session for the UI. `relay.token` is ignored |
+
+A wrong setup stops the startup: unknown mode, `token` without any token, `oauth` without issuer.
+
+| Property | Default | Description |
+|---|---|---|
+| `robotproxy.auth.mode` | `none` | `none`, `token` or `oauth` |
+| `robotproxy.auth.token` | `${relay.token}` | Shared secret of the `token` mode |
+| `robotproxy.auth.open-paths` | `/check,/,/index.html,/favicon.ico,/css/**,/js/**,/img/**,/webjars/**,/swagger-ui.html,/swagger-ui/**,/v3/api-docs/**` (without `/` and `/index.html` when a UI login exists: `token` mode, or `oauth` with `ui.client-id`; `/login` is added in `token` mode) | Routes that stay public in `token` and `oauth` modes (health check, UI pages and assets, API docs). `/error` is always public |
+| `spring.security.oauth2.resourceserver.jwt.issuer-uri` | | `oauth`: Keycloak realm URL. Signing keys are discovered lazily, so a Keycloak that is down at startup is not fatal |
+| `spring.security.oauth2.resourceserver.jwt.audiences` | | `oauth`: required `aud` of the tokens. **Set it**, otherwise any token of the realm is accepted (a warning is logged) |
+| `robotproxy.auth.oauth2.ui.client-id` | | `oauth`: Keycloak client used for the **browser login of the UI**. Empty = no browser login |
+| `robotproxy.auth.oauth2.ui.client-secret` | | Secret of that client. Empty = public client (authorization code + PKCE) |
+
+```
+java -jar cerberus-robot-proxy.jar --robotproxy.auth.mode=token --robotproxy.auth.token=<long-random-secret>
+
+java -jar cerberus-robot-proxy.jar --robotproxy.auth.mode=oauth \
+  --spring.security.oauth2.resourceserver.jwt.issuer-uri=https://keycloak.example.com/realms/cerberus \
+  --spring.security.oauth2.resourceserver.jwt.audiences=cerberus-robot-proxy
+```
+
+Authentication errors are `401 {"error":"...","code":"unauthorized"}`. It is all or nothing: there are no roles or scopes, a valid token (or a logged-in user) gives access to every protected route.
+
+**The built-in UI**: in `token` mode, opening it redirects to `/login` (type the token, a session cookie is created; `/logout` ends it); in `oauth` mode, with `robotproxy.auth.oauth2.ui.client-id`, it redirects to the Keycloak login (see below). The `/chat` WebSocket and the API calls of the UI work through that session. Bearer clients (Cerberus) are unaffected.
+
+### OAuth2 with Keycloak (machine to machine)
+
+Nobody logs in: Cerberus is a service that authenticates itself with its own credentials and calls the robot-proxy with the resulting token.
+
+1. Cerberus calls the token endpoint of the realm with the `client_credentials` grant (its `client_id` and `client_secret`) and gets a short-lived access token (JWT).
+2. Cerberus sends it on every call: `Authorization: Bearer <access_token>`, and asks for a new one shortly before it expires.
+3. The robot-proxy never calls Keycloak per request: it verifies the signature with the realm public keys (cached), then `iss`, `exp` and `aud`.
+
+Keycloak setup (same realm as Cerberus), no role needed: a valid token gives access to everything.
+
+1. A client for Cerberus (`cerberus`, *Client authentication* On, *Service accounts roles* On, *Standard flow* Off; the secret is in *Credentials*).
+2. An **Audience** mapper on it (*Client scopes* -> `cerberus-dedicated` -> *Add mapper* -> *By configuration* -> Audience, *Included Client Audience* `cerberus-robot-proxy` (the client of the UI login, create it first), *Add to access token* On), and `...jwt.audiences=cerberus-robot-proxy` on the robot-proxy: only tokens meant for it are accepted. (Without `audiences`, any token of the realm is.)
+
+Cerberus then gets a token with the `client_credentials` grant and sends it as `Authorization: Bearer <token>`.
+
+### OAuth2 browser login of the UI
+
+With `robotproxy.auth.oauth2.ui.client-id` set, the UI is usable in `oauth` mode: opening it in a browser redirects to the Keycloak login (authorization code flow), then back to the UI, which works with a session cookie (its `fetch` calls and the `/chat` WebSocket are same-origin, so they carry it). Cerberus keeps using its Bearer token on the same routes, nothing changes for it.
+
+- Keycloak: create the client `cerberus-robot-proxy` (OpenID Connect, *Standard flow*; it is also the audience target of the machine tokens above), with the valid redirect URI `https://<robot-proxy>/login/oauth2/code/keycloak` and the valid post-logout redirect URI `https://<robot-proxy>/`. Confidential (with `client-secret`) or public (PKCE).
+- Any user of the realm who can log in gets the UI (all or nothing, as for tokens).
+- `/logout` ends the session and the Keycloak SSO session. Behind a reverse proxy, set `server.forward-headers-strategy=native` (or `framework`) so the redirect URIs use the public address.
+- The realm is discovered on the first login, not at startup.
+- The Helm probes on `/` get a redirect (`302`, accepted by Kubernetes) instead of `200`: point them to `/check`.
+- Known limit: some UI actions are state-changing `GET`s (`startProxy`, `stopProxy`, `clearHar`), so a session cookie is exposed to cross-site requests (browsers send it on top-level navigations with `SameSite=Lax`). Use it on a trusted network, or keep Bearer-only.
+
+The Spring Security headers (cache-control, frame options...) are disabled, to keep the responses as they were.
 
 
 ## Swagger / OpenAPI

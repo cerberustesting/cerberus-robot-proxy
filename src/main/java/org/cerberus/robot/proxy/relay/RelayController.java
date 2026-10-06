@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * HTTP relay: Cerberus core sends an already built HTTP request, it is executed from this
- * machine and the raw outcome is returned. Every route requires "Authorization: Bearer
- * relay.token"; without a configured token the relay is disabled (503 relay_disabled).
+ * machine and the raw outcome is returned. With robotproxy.auth.mode=token or oauth, the security
+ * filter chain (SecurityConfig) has already authenticated the call. With the default mode "none" the
+ * historical rule applies: every route requires "Authorization: Bearer relay.token", and without a
+ * configured token the relay is disabled (503 relay_disabled).
  */
 @RestController
 public class RelayController {
@@ -27,6 +30,10 @@ public class RelayController {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final RelayService relayService;
+
+    /** none (also when unset, e.g. in unit tests), token or oauth. */
+    @Value("${robotproxy.auth.mode:none}")
+    private String authMode;
 
     @Autowired
     public RelayController(RelayService relayService) {
@@ -61,6 +68,9 @@ public class RelayController {
     }
 
     private void authorize(String authorization) throws RelayException {
+        if (authMode != null && !"none".equalsIgnoreCase(authMode.trim())) {
+            return; // already authenticated (and, with oauth, scope-checked) by the security filter chain
+        }
         if (!relayService.isEnabled()) {
             throw new RelayException(503, "relay_disabled", "The relay is disabled: relay.token is not configured");
         }
