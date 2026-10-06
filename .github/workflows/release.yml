@@ -125,10 +125,31 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         git fetch && git reset --hard origin/master
-        gh release delete v${{needs.change_version_push_tag.outputs.version}}
-        gh release create v${{ inputs.nextVersion }}-SNAPSHOT --title v${{ inputs.nextVersion }}-SNAPSHOT --prerelease
-        git tag -d v${{needs.change_version_push_tag.outputs.version}}
-        git push origin :refs/tags/v${{needs.change_version_push_tag.outputs.version}}
+
+        OLD_VERSION="v${{ needs.change_version_push_tag.outputs.version }}"
+        NEXT_VERSION="v${{ inputs.nextVersion }}-SNAPSHOT"
+
+        echo "Removing previous prerelease: $OLD_VERSION"
+        if gh release view "$OLD_VERSION" >/dev/null 2>&1; then
+          gh release delete "$OLD_VERSION" --yes
+        else
+          echo "Release $OLD_VERSION does not exist, skipping."
+        fi
+
+        echo "Creating prerelease: $NEXT_VERSION"
+        if gh release view "$NEXT_VERSION" >/dev/null 2>&1; then
+          echo "Release $NEXT_VERSION already exists, skipping creation."
+        else
+          gh release create "$NEXT_VERSION" --title "$NEXT_VERSION" --prerelease
+        fi
+
+        if git rev-parse "$OLD_VERSION" >/dev/null 2>&1; then
+          git tag -d "$OLD_VERSION"
+        fi
+
+        if git ls-remote --exit-code --tags origin "refs/tags/$OLD_VERSION" >/dev/null 2>&1; then
+          git push origin ":refs/tags/$OLD_VERSION"
+        fi
 
   call_workflow_new:
     needs: pre_release
