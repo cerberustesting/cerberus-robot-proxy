@@ -37,10 +37,19 @@ public class MySessionProxies {
     private Integer port;
     private Process mitmProcess;
     private Integer mitmApiPort;
+    private MyMITMProxyService.RecentOutput mitmOutput; // last lines mitmdump printed, to explain a failure
     private Path trafficLogFile;
     private Local browserStackLocal;
     private Date maxDateUp;
     private String endDateMessage;
+
+    public MyMITMProxyService.RecentOutput getMitmOutput() {
+        return mitmOutput;
+    }
+
+    public void setMitmOutput(MyMITMProxyService.RecentOutput mitmOutput) {
+        this.mitmOutput = mitmOutput;
+    }
 
     public boolean isMitmproxy() {
         return mitmProcess != null;

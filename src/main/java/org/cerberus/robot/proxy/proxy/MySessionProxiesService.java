@@ -84,6 +84,7 @@ public class MySessionProxiesService {
                 msp.setMitmProcess(handle.process);
                 msp.setPort(port);
                 msp.setMitmApiPort(handle.apiPort);
+                msp.setMitmOutput(handle.output);
 
                 LOG.info("Mitmproxy '{}' started on port {} until {}", uuid, port, endDateMessage);
 
@@ -110,6 +111,9 @@ public class MySessionProxiesService {
 
         return msp;
 
+        } catch (ProxyStartException e) {
+            LOG.error("Failed to start proxy {}: {}", uuid, e.getMessage());
+            throw e;
         } catch (Exception e) {
             LOG.error("Failed to start proxy {}", uuid, e);
             throw new RuntimeException("Unable to start proxy", e);

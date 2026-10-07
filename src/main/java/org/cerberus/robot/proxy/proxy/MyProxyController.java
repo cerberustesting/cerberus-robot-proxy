@@ -130,7 +130,12 @@ public class MyProxyController {
             return sb.toString();
         }
 
-        MySessionProxies msp = mySessionProxiesService.start(port, timeout, enableCapture, bsLocalProxyActive, bsKey, bsLocalIdentifier, bsLocalProxyHost, proxyType);
+        MySessionProxies msp;
+        try {
+            msp = mySessionProxiesService.start(port, timeout, enableCapture, bsLocalProxyActive, bsKey, bsLocalIdentifier, bsLocalProxyHost, proxyType);
+        } catch (ProxyStartException e) {
+            return new JSONObject().put("status", "Error").put("message", e.getMessage()).put("proxyType", proxyType).toString();
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("{\"status\":\"Success\",");

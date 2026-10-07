@@ -15,8 +15,11 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.math.BigInteger;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +29,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -51,16 +56,55 @@ public class MyMITMProxyService {
     private String trafficLogDir;
 
     /**
+     * The mitmdump executable. A bare name is looked up in the PATH of this process, which is
+     * shorter than a shell's when the robot proxy is launched from a desktop app (Homebrew's
+     * /opt/homebrew/bin is typically missing): give the full path in that case.
+     */
+    @Value("${mitmproxy.command:mitmdump}")
+    private String mitmCommand;
+
+    /**
+     * How long to wait for mitmdump to be up (its API port answering) before giving the session
+     * back. A process that dies meanwhile fails the start at once; one that is only slow does not.
+     */
+    @Value("${mitmproxy.start-timeout-ms:10000}")
+    private long startTimeoutMs;
+
+    /**
      * Handle to a started mitmdump process and the port its embedded
      * TrafficControl REST API (getHar/getStats/reset) is bound to.
      */
     public static class MitmProxyHandle {
         public final Process process;
         public final int apiPort;
+        public final RecentOutput output;
 
-        public MitmProxyHandle(Process process, int apiPort) {
+        public MitmProxyHandle(Process process, int apiPort, RecentOutput output) {
             this.process = process;
             this.apiPort = apiPort;
+            this.output = output;
+        }
+    }
+
+    /**
+     * The last lines mitmdump printed. Its output is only logged at DEBUG, so without this nobody
+     * could tell why a session's mitmdump stopped.
+     */
+    public static class RecentOutput {
+        private static final int MAX_LINES = 40;
+        private final Deque<String> lines = new ArrayDeque<>();
+
+        synchronized void add(String line) {
+            lines.addLast(line);
+            while (lines.size() > MAX_LINES) {
+                lines.removeFirst();
+            }
+        }
+
+        /** The last {@code count} lines, one per line, or an empty string. */
+        public synchronized String last(int count) {
+            List<String> all = new ArrayList<>(lines);
+            return String.join("\n", all.subList(Math.max(0, all.size() - count), all.size()));
         }
     }
 
@@ -87,7 +131,7 @@ public class MyMITMProxyService {
         int apiPort = findFreePort();
 
         List<String> command = new ArrayList<>(List.of(
-                "mitmdump",
+                mitmCommand,
                 "--listen-port", String.valueOf(port),
                 "-s", script.toAbsolutePath().toString(),
                 "--set", "block_global=false",
@@ -104,16 +148,25 @@ public class MyMITMProxyService {
         ProcessBuilder pb = new ProcessBuilder(command);
 
         pb.redirectErrorStream(true);
-        Process process = pb.start();
+        Process process;
+        try {
+            process = pb.start();
+        } catch (IOException e) {
+            Files.deleteIfExists(script);
+            throw new ProxyStartException("Cannot run '" + mitmCommand + "': " + e.getMessage()
+                    + ". Is mitmproxy installed, and is it in the PATH of the robot proxy? (property mitmproxy.command takes a full path)");
+        }
 
         // Drain stdout/stderr continuously: mitmdump logs every intercepted
         // request, and an unread pipe fills up its OS buffer, which makes
         // the mitmdump process block on write() and freeze all traffic.
+        RecentOutput output = new RecentOutput();
         Thread logDrain = new Thread(() -> {
             try (BufferedReader reader =
                          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    output.add(line);
                     LOG.debug("[mitmdump] {}", line);
                 }
             } catch (IOException ignored) {
@@ -122,7 +175,74 @@ public class MyMITMProxyService {
         logDrain.setDaemon(true);
         logDrain.start();
 
-        return new MitmProxyHandle(process, apiPort);
+        awaitStarted(process, apiPort, port, output);
+
+        return new MitmProxyHandle(process, apiPort, output);
+    }
+
+    /**
+     * Returns once mitmdump answers on its API port. Fails at once if the process exits meanwhile
+     * (port already taken, addon error, bad option...): reporting "started" for a dead engine is what
+     * made every later HAR/stats call fail with "Connection refused" and no explanation.
+     */
+    private void awaitStarted(Process process, int apiPort, int proxyPort, RecentOutput output) {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(startTimeoutMs);
+        while (System.nanoTime() < deadline) {
+            if (!process.isAlive()) {
+                // Let the drain thread read what the process printed before dying.
+                try {
+                    process.waitFor(500, TimeUnit.MILLISECONDS);
+                    Thread.sleep(150);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new ProxyStartException("mitmdump exited with code " + process.exitValue()
+                        + " right after it was started (proxy port " + proxyPort + ")" + describeOutput(output));
+            }
+            if (isListening(apiPort)) {
+                return;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        LOG.warn("mitmdump is running but its API port {} did not answer within {} ms: going on, HAR and stats may fail{}",
+                apiPort, startTimeoutMs, describeOutput(output));
+    }
+
+    private static boolean isListening(int port) {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("localhost", port), 200);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static String describeOutput(RecentOutput output) {
+        String last = output == null ? "" : output.last(8);
+        return last.isEmpty() ? " (it printed nothing; set the log level of org.cerberus.robot.proxy.proxy to DEBUG for more)"
+                : ". Last output of mitmdump:\n" + last;
+    }
+
+    /**
+     * Why a call to the API of a session's mitmdump failed, in one line: the usual cause is that the
+     * process is gone, which the bare "Connection refused" does not say.
+     */
+    String explainApiFailure(MySessionProxies msp, Exception ex) {
+        Process p = msp.getMitmProcess();
+        String reason;
+        if (p != null && !p.isAlive()) {
+            reason = "mitmdump is no longer running (exit code " + p.exitValue() + ")" + describeOutput(msp.getMitmOutput());
+        } else if (ex instanceof ConnectException) {
+            reason = "mitmdump is running but its API port " + msp.getMitmApiPort() + " refuses connections";
+        } else {
+            reason = ex.toString();
+        }
+        return reason;
     }
 
     private static int findFreePort() throws IOException {
@@ -213,7 +333,8 @@ public class MyMITMProxyService {
             }
 
         } catch (Exception ex) {
-            LOG.error("Failed to retrieve HAR for {}", msp.getUuid(), ex);
+            LOG.warn("HAR of proxy {} unavailable: {}", msp.getUuid(), explainApiFailure(msp, ex));
+            LOG.debug("HAR failure details", ex);
             return new JSONObject();
         }
     }
@@ -276,7 +397,8 @@ public class MyMITMProxyService {
             }
 
         } catch (Exception ex) {
-            LOG.error("Failed to reset mitmproxy traffic for {}", msp.getUuid(), ex);
+            LOG.warn("Could not reset the traffic of proxy {}: {}", msp.getUuid(), explainApiFailure(msp, ex));
+            LOG.debug("Reset failure details", ex);
         }
     }
 
@@ -308,7 +430,8 @@ public class MyMITMProxyService {
             }
 
         } catch (Exception ex) {
-            LOG.warn("Failed to get stats for proxy {}", msp.getUuid(), ex);
+            LOG.warn("Stats of proxy {} unavailable: {}", msp.getUuid(), explainApiFailure(msp, ex));
+            LOG.debug("Stats failure details", ex);
         }
 
         return response;
