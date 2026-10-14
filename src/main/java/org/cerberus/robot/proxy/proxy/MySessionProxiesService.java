@@ -82,11 +82,11 @@ public class MySessionProxiesService {
                 // ---- MITMPROXY ----
                 MyMITMProxyService.MitmProxyHandle handle = myMITMProxyService.startProxy(port, enableCapture, uuid);
                 msp.setMitmProcess(handle.process);
-                msp.setPort(port);
+                msp.setPort(handle.proxyPort);
                 msp.setMitmApiPort(handle.apiPort);
                 msp.setMitmOutput(handle.output);
 
-                LOG.info("Mitmproxy '{}' started on port {} until {}", uuid, port, endDateMessage);
+                LOG.info("Mitmproxy '{}' started on port {} until {}", uuid, handle.proxyPort, endDateMessage);
 
                 Path trafficLogFile = myMITMProxyService.getTrafficLogFile(uuid);
                 if (trafficLogFile != null) {

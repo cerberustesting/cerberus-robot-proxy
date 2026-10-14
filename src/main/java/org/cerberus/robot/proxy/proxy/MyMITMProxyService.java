@@ -76,11 +76,13 @@ public class MyMITMProxyService {
      */
     public static class MitmProxyHandle {
         public final Process process;
+        public final int proxyPort;
         public final int apiPort;
         public final RecentOutput output;
 
-        public MitmProxyHandle(Process process, int apiPort, RecentOutput output) {
+        public MitmProxyHandle(Process process, int proxyPort, int apiPort, RecentOutput output) {
             this.process = process;
+            this.proxyPort = proxyPort;
             this.apiPort = apiPort;
             this.output = output;
         }
@@ -130,6 +132,11 @@ public class MyMITMProxyService {
         // would make every session but the first fail to bind it, silently returning empty HARs.
         int apiPort = findFreePort();
 
+        // mitmdump does not pick a random port for 0, so resolve it here.
+        if (port == 0) {
+            port = findFreePort();
+        }
+
         List<String> command = new ArrayList<>(List.of(
                 mitmCommand,
                 "--listen-port", String.valueOf(port),
@@ -177,7 +184,7 @@ public class MyMITMProxyService {
 
         awaitStarted(process, apiPort, port, output);
 
-        return new MitmProxyHandle(process, apiPort, output);
+        return new MitmProxyHandle(process, port, apiPort, output);
     }
 
     /**
