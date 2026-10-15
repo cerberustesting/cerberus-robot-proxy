@@ -335,7 +335,7 @@ public class MyMITMProxyService {
 
             try (InputStream is = conn.getInputStream()) {
                 String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                LOG.info("Get HAR: {}", json.toString());
+                LOG.debug("HAR of proxy {} fetched ({} chars)", msp.getUuid(), json.length());
                 return new JSONObject(json);
             }
 
