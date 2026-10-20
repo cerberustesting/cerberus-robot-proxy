@@ -153,9 +153,11 @@ jobs:
             -e 'ssh -i ./deploy_key -o StrictHostKeyChecking=no' ${{env.source}} ${{env.destination}}
         
       - name: helm package
+        env:
+          version: ${{needs.build.outputs.version}}
         run: |
           sudo chmod -R 777 ./cerberus-robot-proxy-chart
-          helm package helm -d ./cerberus-robot-proxy-chart
+          helm package helm -d ./cerberus-robot-proxy-chart --version "${{env.version}}" --app-version "${{env.version}}"
           helm repo index cerberus-robot-proxy-chart --merge ./cerberus-robot-proxy-chart/index.yaml --url http://vm.cerberus-testing.org/delivery/helm/
       - name: push chart to vm
         env:
