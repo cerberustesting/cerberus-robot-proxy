@@ -101,12 +101,19 @@ volumes: []
 #   secret:
 #     secretName: mysecret
 #     optional: false
+# Each session keeps its HAR in a file under the temp directory (/tmp) until it stops. To bound
+# that space, or to run with a read-only root filesystem, mount an emptyDir on /tmp:
+# - name: tmp
+#   emptyDir:
+#     sizeLimit: 2Gi
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
 # - name: foo
 #   mountPath: "/etc/foo"
 #   readOnly: true
+# - name: tmp
+#   mountPath: /tmp
 
 nodeSelector: {}
 tolerations: []

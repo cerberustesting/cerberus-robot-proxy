@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.net.ConnectException;
@@ -54,6 +56,14 @@ public class MyMITMProxyService {
      */
     @Value("${mitmproxy.traffic-log-dir:}")
     private String trafficLogDir;
+
+    /**
+     * Directory where each session's mitmdump keeps the HAR entries it captured, one file per
+     * session, instead of holding them in memory. Empty means the system temp directory. Local
+     * to this host: it is not shared with anything.
+     */
+    @Value("${mitmproxy.har-dir:}")
+    private String harDir;
 
     /**
      * The mitmdump executable. A bare name is looked up in the PATH of this process, which is
@@ -110,6 +120,32 @@ public class MyMITMProxyService {
         }
     }
 
+    private Path harDirectory() {
+        return harDir == null || harDir.isBlank()
+                ? Paths.get(System.getProperty("java.io.tmpdir"))
+                : Paths.get(harDir);
+    }
+
+    /**
+     * The HAR files of sessions that did not get to clean up after themselves (this app or their
+     * mitmdump was killed) are of no use to anybody: the sessions are in memory, and gone with the app.
+     */
+    @PostConstruct
+    void purgeOrphanHarFiles() {
+        Path dir = harDirectory();
+        if (!Files.isDirectory(dir)) {
+            return;
+        }
+        try (var files = Files.newDirectoryStream(dir, "*.har.jsonl")) {
+            for (Path file : files) {
+                Files.deleteIfExists(file);
+                LOG.info("Deleted orphan HAR file {}", file);
+            }
+        } catch (IOException e) {
+            LOG.warn("Could not purge the HAR files of {}: {}", dir, e.getMessage());
+        }
+    }
+
     /**
      * Start Proxy on specific Port. If port = 0, a random free port will be
      * used
@@ -120,6 +156,17 @@ public class MyMITMProxyService {
      * @return the mitmproxy handle
      */
     public MitmProxyHandle startProxy(int port, boolean enableCapture, UUID uuid) throws IOException {
+
+        Path harDirectory = harDirectory();
+        try {
+            Files.createDirectories(harDirectory);
+        } catch (IOException e) {
+            throw new ProxyStartException("Cannot create the HAR directory " + harDirectory + ": " + e.getMessage()
+                    + ". Property mitmproxy.har-dir sets it.");
+        }
+        if (!Files.isWritable(harDirectory)) {
+            throw new ProxyStartException("The HAR directory " + harDirectory + " is not writable. Property mitmproxy.har-dir sets it.");
+        }
 
         Path script = Files.createTempFile("traffic_control", ".py");
 
@@ -142,14 +189,14 @@ public class MyMITMProxyService {
                 "--listen-port", String.valueOf(port),
                 "-s", script.toAbsolutePath().toString(),
                 "--set", "block_global=false",
-                "--set", "api_port=" + apiPort
+                "--set", "api_port=" + apiPort,
+                "--set", "har_dir=" + harDirectory.toAbsolutePath(),
+                "--set", "session_uuid=" + uuid
         ));
 
         if (trafficLogDir != null && !trafficLogDir.isBlank()) {
             command.add("--set");
             command.add("traffic_log_dir=" + trafficLogDir);
-            command.add("--set");
-            command.add("session_uuid=" + uuid);
         }
 
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -288,6 +335,12 @@ public class MyMITMProxyService {
                 LOG.warn("Mitmproxy '{}' did not stop gracefully, killing",  msp.getUuid().toString());
                 p.destroyForcibly();
             }
+        }
+
+        try {
+            Files.deleteIfExists(harDirectory().resolve(msp.getUuid() + ".har.jsonl"));
+        } catch (IOException e) {
+            LOG.warn("Failed to delete HAR file of '{}'", msp.getUuid(), e);
         }
 
         Path trafficLogFile = msp.getTrafficLogFile();
