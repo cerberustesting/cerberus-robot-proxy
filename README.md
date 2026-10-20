@@ -195,3 +195,5 @@ BrowserMob has been removed: `mitmproxy` (mitmdump) is the only proxy engine. `G
 The traffic a session captures is not kept in memory: each entry of the HAR is written to `<mitmproxy.har-dir>/<session uuid>.har.jsonl` as soon as its response is complete, and `Get content (HAR)` streams it back from that file. Nothing is truncated. The file is deleted when the session stops, and the files left by a killed proxy are deleted at startup.
 
 `mitmproxy.har-dir` (env `MITMPROXY_HAR_DIR`) defaults to the system temp directory. It is local to the host and must be writable, or the proxy does not start. Budget the disk of the host (or the ephemeral storage of the pod) for the HAR of the sessions running at the same time: several tens of MB each.
+
+
