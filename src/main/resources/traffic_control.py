@@ -7,6 +7,7 @@ import tempfile
 import threading
 import json
 import time
+import uuid
 import mitmproxy.version
 
 # ============================================================
@@ -30,7 +31,7 @@ class FlowRecord:
     What is kept in memory for a captured flow: only what the filters need. The HAR entry itself
     is written to disk as soon as the flow is complete, and the flow is released.
     """
-    __slots__ = ("flow", "url", "method", "host", "started", "offset", "length", "inline")
+    __slots__ = ("flow", "url", "method", "host", "started", "offset", "length", "plen", "tlen", "inline")
 
     def __init__(self, flow):
         req = flow.request
@@ -41,6 +42,8 @@ class FlowRecord:
         self.started = req.timestamp_start
         self.offset = None        # position of the HAR entry in the HAR file
         self.length = 0
+        self.plen = None          # length of the entry before its response text, and of that text (None if unknown)
+        self.tlen = None
         self.inline = None        # HAR entry kept in memory if it could not be written to disk
 
 
@@ -137,7 +140,7 @@ class TrafficControl:
             return None
 
         entry = build_har_entry(flow, mode="full")
-        line = json.dumps(entry).encode("utf-8")
+        line, plen, tlen = serialize_entry(entry)
 
         with self.lock:
             if rec.flow is None:
@@ -148,12 +151,17 @@ class TrafficControl:
                     self.har_fh.write(b"\n")
                     rec.offset = self.har_size
                     rec.length = len(line)
+                    rec.plen = plen
+                    rec.tlen = tlen
                     self.har_size += len(line) + 1
                 except Exception as e:
                     ctx.log.error(f"Cannot write HAR entry, keeping it in memory: {e}")
                     self.har_fh = None
             if rec.offset is None:
                 rec.inline = line
+                rec.length = len(line)
+                rec.plen = plen
+                rec.tlen = tlen
             rec.flow = None
 
         flow.metadata.pop("cerberus_rec", None)
@@ -179,26 +187,28 @@ class TrafficControl:
 
     def select(self, params):
         """
-        The records matching the filters, as a list of (started, source) where source is the
-        serialized HAR entry or its (offset, length) in the HAR file, plus a reader on that file.
-        Flows still in progress are serialized as they are now. The reader must be closed by the caller.
+        The records matching the filters, as (started, items, fd). An item is (line, offset, length,
+        plen, tlen): the serialized HAR entry (line) or its place in the HAR file (offset, length),
+        and where its response text sits in it (see serialize_entry). Flows still in progress are
+        serialized as they are now. fd reads the HAR file and must be closed by the caller.
         """
         with self.lock:
             selected = [r for r in self.records if matches(r, params)]
             items = []
             for r in selected:
                 if r.flow is not None:
-                    items.append(json.dumps(build_har_entry(r.flow, mode="full")).encode("utf-8"))
+                    line, plen, tlen = serialize_entry(build_har_entry(r.flow, mode="full"))
+                    items.append((line, None, len(line), plen, tlen))
                 elif r.inline is not None:
-                    items.append(r.inline)
+                    items.append((r.inline, None, r.length, r.plen, r.tlen))
                 else:
-                    items.append((r.offset, r.length))
-            reader = None
-            if any(isinstance(i, tuple) for i in items):
+                    items.append((None, r.offset, r.length, r.plen, r.tlen))
+            fd = None
+            if any(i[0] is None for i in items):
                 self.har_fh.flush()
-                reader = open(self.har_path, "rb")
+                fd = os.open(self.har_path, os.O_RDONLY)
             started = selected[0].started if selected else None
-        return started, items, reader
+        return started, items, fd
 
     def count(self, params):
         with self.lock:
@@ -320,8 +330,72 @@ def build_har_entry(f, mode="full", page_id="page_1"):
     return entry
 
 
-def render_entry(raw, mode):
+# Stands for the response text while an entry is serialized, to find where the text goes.
+TEXT_TOKEN = uuid.uuid4().hex
+
+
+def serialize_entry(entry):
+    """
+    The JSON line of a HAR entry, with the position of its response text in it: (line, plen, tlen),
+    the text being line[plen:plen + tlen]. This lets noresponse skip the text, which is nearly all
+    of the entry, without parsing it. plen and tlen are None if the text cannot be located.
+    """
+    response = entry.get("response")
+    if response is None:
+        return json.dumps(entry).encode("utf-8"), None, None
+
+    content = response["content"]
+    text = content["text"]
+    content["text"] = TEXT_TOKEN
+    try:
+        shell = json.dumps(entry)
+    finally:
+        content["text"] = text
+
+    marker = '"' + TEXT_TOKEN + '"'
+    if shell.count(TEXT_TOKEN) != 1:
+        return json.dumps(entry).encode("utf-8"), None, None
+
+    i = shell.index(marker)
+    prefix = shell[:i].encode("utf-8")
+    body = json.dumps(text).encode("utf-8")
+    suffix = shell[i + len(marker):].encode("utf-8")
+    return prefix + body + suffix, len(prefix), len(body)
+
+
+def pread(fd, length, offset):
+    chunks = []
+    while length > 0:
+        chunk = os.pread(fd, length, offset)
+        if not chunk:
+            raise IOError("HAR file shorter than expected")
+        chunks.append(chunk)
+        length -= len(chunk)
+        offset += len(chunk)
+    return b"".join(chunks)
+
+
+def entry_bytes(item, mode, fd):
     """The serialized HAR entry as asked by the mode of the /har call."""
+    line, offset, length, plen, tlen = item
+
+    if mode == "noresponse" and plen is not None:
+        # The text is skipped, never read.
+        if line is None:
+            prefix = pread(fd, plen, offset)
+            suffix = pread(fd, length - plen - tlen, offset + plen + tlen)
+        else:
+            prefix = line[:plen]
+            suffix = line[plen + tlen:]
+        return prefix + b'""' + suffix
+
+    if line is None:
+        line = pread(fd, length, offset)
+    return render_entry(line, mode)
+
+
+def render_entry(raw, mode):
+    """The serialized HAR entry as asked by the mode of the /har call, for the modes that need it parsed."""
     if mode == "requests":
         entry = json.loads(raw)
         entry.pop("response", None)
@@ -415,7 +489,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         is never held in memory.
         """
         mode = params.get("mode", "full")
-        started, items, reader = traffic.select(params)
+        started, items, fd = traffic.select(params)
         try:
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -423,19 +497,16 @@ class ApiHandler(BaseHTTPRequestHandler):
             try:
                 self.wfile.write(har_head(started))
                 for i, item in enumerate(items):
-                    if isinstance(item, tuple):
-                        reader.seek(item[0])
-                        item = reader.read(item[1])
                     if i:
                         self.wfile.write(b",")
-                    self.wfile.write(render_entry(item, mode))
+                    self.wfile.write(entry_bytes(item, mode, fd))
                 self.wfile.write(HAR_TAIL.encode("utf-8"))
             except Exception as e:
                 # The status is already sent: all that is left is to cut the connection short.
                 ctx.log.error(f"HAR streaming interrupted: {e}")
         finally:
-            if reader:
-                reader.close()
+            if fd is not None:
+                os.close(fd)
 
     def reply(self, code, payload):
         self.send_response(code)
