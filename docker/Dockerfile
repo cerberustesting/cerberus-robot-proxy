@@ -17,4 +17,5 @@ RUN apt-get update && \
 RUN echo "Download Cerberus Executor Application" && \
     wget https://github.com/cerberustesting/cerberus-robot-proxy/releases/download/v$VERSION/cerberus-robot-proxy-$VERSION.jar
 
-ENTRYPOINT sh -c 'java -jar "$PACKAGE_NAME"'
+# exec form, and exec: the JVM is PID 1 and gets the stop signal, instead of a shell that does not pass it on
+ENTRYPOINT ["sh", "-c", "exec java -jar \"$PACKAGE_NAME\""]
