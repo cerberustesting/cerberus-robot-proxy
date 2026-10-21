@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -169,20 +170,64 @@ public class MyProxyController {
 
 
     @ApiOperation(value = "Get HAR file knowing a specific proxy uuid")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "The HAR as JSON, streamed from the proxy ({} when it is unavailable). Its content type follows the Accept header: text/plain by default")
+    }
+    )
     @RequestMapping(value = "/getHar", method = RequestMethod.GET)
-    public String getHar(
+    public void getHar(
             @RequestParam(value = "uuid") String uuid,
             @RequestParam(value = "requestUrl", defaultValue = "") String requestUrl,
-            @RequestParam(value = "emptyResponseContentText", defaultValue = "false") boolean emptyResponseContentText) {
+            @RequestParam(value = "emptyResponseContentText", defaultValue = "false") boolean emptyResponseContentText,
+            HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
 
         LOG.info("Get HAR for Proxy UUID '{}'", uuid);
 
+        // Streamed from the proxy as it is read: a HAR of several tens of MB is never held in memory.
+        response.setContentType(harContentType(request.getHeader("Accept")));
         try {
-            return mySessionProxiesService.getHar(uuid, requestUrl, emptyResponseContentText);
+            mySessionProxiesService.writeHar(uuid, requestUrl, emptyResponseContentText, response.getOutputStream());
         } catch (Exception ex) {
             LOG.error("Error getting HAR for proxy '{}'", uuid, ex);
-            return "{}";
+            if (response.isCommitted()) {
+                // Part of the HAR is gone already: cut the connection short rather than end it as if whole.
+                throw new IOException("HAR of proxy '" + uuid + "' interrupted", ex);
+            }
+            response.getOutputStream().write("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
+    }
+
+    /**
+     * The content type the HAR was answered with when it was a String, which Spring negotiated from the
+     * Accept header: the first concrete type asked for, text/plain for none or a wildcard, in UTF-8 except
+     * for JSON. Callers may depend on it.
+     */
+    static String harContentType(String accept) {
+        MediaType type = MediaType.TEXT_PLAIN;
+        if (accept != null && !accept.isBlank()) {
+            try {
+                List<MediaType> asked = MediaType.parseMediaTypes(accept);
+                MediaType.sortBySpecificityAndQuality(asked);
+                for (MediaType candidate : asked) {
+                    if (candidate.isConcrete()) {
+                        type = candidate;
+                        break;
+                    }
+                    if (candidate.isCompatibleWith(MediaType.TEXT_PLAIN)) {
+                        break;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // an Accept header that does not parse: text/plain
+            }
+        }
+        boolean json = type.isCompatibleWith(MediaType.APPLICATION_JSON)
+                || type.isCompatibleWith(MediaType.parseMediaType("application/*+json"));
+        if (type.getCharset() == null && !json) {
+            type = new MediaType(type, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return type.toString();
     }
 
     @RequestMapping(value = "/getHarMD5", method = RequestMethod.GET)

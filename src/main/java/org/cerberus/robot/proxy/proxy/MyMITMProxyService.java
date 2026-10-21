@@ -354,48 +354,77 @@ public class MyMITMProxyService {
     }
 
     /**
+     * What the HAR answers when it is unavailable.
+     */
+    private static final byte[] EMPTY_HAR = "{}".getBytes(StandardCharsets.UTF_8);
+
+    /**
+     * Opens the HAR of a session on its mitmdump. It comes as a stream so that a HAR of several tens
+     * of MB is never held in memory.
      *
      * @param msp
      * @param requestUrlPattern
      * @param emptyResponseContentText
-     * @return
+     * @return the HAR, to be read and closed by the caller
+     * @throws IOException if mitmdump cannot be reached or answers an error
      */
-    public JSONObject getHar(MySessionProxies msp,
+    private InputStream openHar(MySessionProxies msp,
                       String requestUrlPattern,
-                      boolean emptyResponseContentText) {
+                      boolean emptyResponseContentText) throws IOException {
 
+        int apiPort = msp.getMitmApiPort();
+        String mode = emptyResponseContentText ? "noresponse" : "full";
+
+        StringBuilder url = new StringBuilder(
+                "http://localhost:" + apiPort + "/har?mode=" + mode
+        );
+
+        if (requestUrlPattern != null && !requestUrlPattern.isEmpty()) {
+            url.append("&contains=")
+                    .append(URLEncoder.encode(requestUrlPattern, StandardCharsets.UTF_8));
+        }
+
+        LOG.info("Request URL: {}", url.toString());
+
+        HttpURLConnection conn = (HttpURLConnection)
+                new URL(url.toString()).openConnection();
+
+        conn.setRequestMethod("POST");
+        conn.setConnectTimeout(3000);
+        conn.setReadTimeout(10000);
+
+        return conn.getInputStream();
+    }
+
+    /**
+     * Copies the HAR of a session to the output as it comes from mitmdump. An unavailable HAR is
+     * answered {@code {}}, as it always was. A failure once the copy has begun cannot be answered that
+     * way: it is thrown, so that the caller cuts the connection short rather than send half a HAR as a whole.
+     *
+     * @param msp
+     * @param requestUrlPattern
+     * @param emptyResponseContentText
+     * @param out
+     * @throws IOException if the copy fails once started
+     */
+    public void writeHar(MySessionProxies msp,
+                      String requestUrlPattern,
+                      boolean emptyResponseContentText,
+                      OutputStream out) throws IOException {
+
+        InputStream is;
         try {
-            int apiPort = msp.getMitmApiPort();
-            String mode = emptyResponseContentText ? "noresponse" : "full";
-
-            StringBuilder url = new StringBuilder(
-                    "http://localhost:" + apiPort + "/har?mode=" + mode
-            );
-
-            if (requestUrlPattern != null && !requestUrlPattern.isEmpty()) {
-                url.append("&contains=")
-                        .append(URLEncoder.encode(requestUrlPattern, StandardCharsets.UTF_8));
-            }
-
-            LOG.info("Request URL: {}", url.toString());
-
-            HttpURLConnection conn = (HttpURLConnection)
-                    new URL(url.toString()).openConnection();
-
-            conn.setRequestMethod("POST");
-            conn.setConnectTimeout(3000);
-            conn.setReadTimeout(10000);
-
-            try (InputStream is = conn.getInputStream()) {
-                String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                LOG.debug("HAR of proxy {} fetched ({} chars)", msp.getUuid(), json.length());
-                return new JSONObject(json);
-            }
-
+            is = openHar(msp, requestUrlPattern, emptyResponseContentText);
         } catch (Exception ex) {
             LOG.warn("HAR of proxy {} unavailable: {}", msp.getUuid(), explainApiFailure(msp, ex));
             LOG.debug("HAR failure details", ex);
-            return new JSONObject();
+            out.write(EMPTY_HAR);
+            return;
+        }
+
+        try (is) {
+            long size = is.transferTo(out);
+            LOG.debug("HAR of proxy {} sent ({} bytes)", msp.getUuid(), size);
         }
     }
 
@@ -410,15 +439,24 @@ public class MyMITMProxyService {
 
         try {
 
-            // Static getInstance method is called with hashing MD5 
             MessageDigest md = MessageDigest.getInstance("MD5");
 
-            // digest() method is called to calculate message digest 
-            //  of an input digest() return array of byte 
-            byte[] messageDigest = md.digest(this.getHar(msp, requestUrlPattern, true).toString().getBytes());
+            // The HAR without its response contents, digested as it streams in.
+            try (InputStream is = openHar(msp, requestUrlPattern, true)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = is.read(buffer)) != -1) {
+                    md.update(buffer, 0, read);
+                }
+            } catch (Exception ex) {
+                LOG.warn("HAR of proxy {} unavailable: {}", msp.getUuid(), explainApiFailure(msp, ex));
+                LOG.debug("HAR failure details", ex);
+                md.reset();
+                md.update(EMPTY_HAR);
+            }
 
             // Convert byte array into signum representation 
-            BigInteger no = new BigInteger(1, messageDigest);
+            BigInteger no = new BigInteger(1, md.digest());
 
             // Convert message digest into hex value 
             String hashtext = no.toString(16);

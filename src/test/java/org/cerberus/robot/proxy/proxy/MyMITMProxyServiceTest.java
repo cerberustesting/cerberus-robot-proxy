@@ -113,8 +113,9 @@ class MyMITMProxyServiceTest {
         assertTrue(why.contains("addon error: boom"), why);
 
         // The calls themselves keep their contract (an empty answer) and no longer throw nor flood.
-        JSONObject har = service.getHar(msp, null, false);
-        assertEquals(0, har.length());
+        java.io.ByteArrayOutputStream har = new java.io.ByteArrayOutputStream();
+        service.writeHar(msp, null, false, har);
+        assertEquals("{}", har.toString(java.nio.charset.StandardCharsets.UTF_8));
         assertEquals(0, service.getStats(msp).length());
         assertFalse(why.contains("\tat "), "no stack trace in the explanation");
     }

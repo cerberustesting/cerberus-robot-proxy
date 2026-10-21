@@ -208,14 +208,15 @@ public class MySessionProxiesService {
     }
 
     /**
+     * Writes the HAR of a proxy to the output, without holding it in memory.
      *
      * @param uuid
      * @param requestUrl
      * @param emptyResponseContentText
-     * @return
+     * @param out
      * @throws Exception
      */
-    public String getHar(String uuid, String requestUrl, boolean emptyResponseContentText) throws Exception {
+    public void writeHar(String uuid, String requestUrl, boolean emptyResponseContentText, OutputStream out) throws Exception {
 
         MySessionProxies msp = mySessionProxiesRepository.getMySessionProxies(uuid);
         if (msp == null) {
@@ -225,10 +226,8 @@ public class MySessionProxiesService {
         // ---- Mitmproxy ----
         if (msp.isMitmproxy()) {
             // Appel via mitmproxy command API
-            try (StringWriter stringwriter = new StringWriter()) {
-                JSONObject har = myMITMProxyService.getHar(msp, requestUrl, emptyResponseContentText);
-                return har.toString();
-            }
+            myMITMProxyService.writeHar(msp, requestUrl, emptyResponseContentText, out);
+            return;
         }
 
         throw new IllegalStateException("Proxy exists but no implementation found for uuid " + uuid);
